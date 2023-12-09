@@ -1,8 +1,10 @@
-# Qwik Cash Bch Wallet ⚡️
+# Pre-alpha release ⚡️
 
-Native Bitcoin Cash wallet
+Native Bitcoin Cash wallet 
 
-defaults to localhost for electrum network server.
+defaults to localhost for electrum network access.
+set the url in the config page ```my.electrumserver.com``` if connection is made a connect button will appear.
+default address hd path:  m/44'/145'/0'/0/0 bchtest:....
 
 # Integrate into Existing Project
 
