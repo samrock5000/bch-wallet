@@ -1,0 +1,111 @@
+{
+  "build": {
+    "beforeBuildCommand": "npm run build",
+    "beforeDevCommand": "npm run dev",
+    "devPath": "http://localhost:5173",
+    "distDir": [
+      "../dist"
+    ],
+    "withGlobalTauri": true
+  },
+  "package": {
+    "productName": "wallet-bch",
+    "version": "0.1.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "process": {
+        "exit": true,
+        "relaunch": true
+      },
+      "dialog": {
+        "all": true
+      },
+      "globalShortcut": {
+        "all": true
+      },
+      "http": {
+        "all": true,
+        "scope": [
+          "http://bch-wallet./"
+        ]
+      },
+      "path": {
+        "all": true
+      },
+      "fs": {
+        "exists": true,
+        "scope": [
+          "$HOME/.p2p-wallet/*"
+        ]
+      },
+      "protocol": {
+        "all": true,
+        "asset": true,
+        "assetScope": [
+          "../dist"
+        ]
+      },
+      "window": {
+        "setDecorations": true,
+        "create": true,
+        "hide": true,
+        "show": true,
+        "close": true,
+        "setTitle": true
+      }
+    },
+    "bundle": {
+      "active": true,
+      "category": "Finance",
+      "copyright": "",
+      "deb": {
+        "depends": [],
+        "files": {}
+      },
+      "externalBin": [],
+      "icon": [
+        "icons/32x32.png",
+        "icons/128x128.png",
+        "icons/128x128@2x.png",
+        "icons/icon.icns",
+        "icons/icon.ico"
+      ],
+      "identifier": "com.wallet-bch.dev",
+      "longDescription": "",
+      "macOS": {
+        "entitlements": null,
+        "exceptionDomain": "",
+        "frameworks": [],
+        "providerShortName": null,
+        "signingIdentity": null
+      },
+      "resources": [],
+      "shortDescription": "",
+      "targets": "all",
+      "windows": {
+        "certificateThumbprint": null,
+        "digestAlgorithm": "sha256",
+        "timestampUrl": ""
+      }
+    },
+    "security": {
+      "csp": null
+    },
+    "updater": {
+      "active": false
+    },
+    "windows": [
+      {
+        "fullscreen": false,
+        "height": 800,
+        "resizable": true,
+        "title": "bch-wallet",
+        "label": "main",
+        "width": 640,
+        "url": "index.html"
+      }
+    ]
+  }
+}

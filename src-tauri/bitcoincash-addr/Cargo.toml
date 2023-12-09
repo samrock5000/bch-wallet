@@ -1,0 +1,23 @@
+[package]
+name = "bitcoincash-addr"
+version = "0.5.2"
+authors = ["Harry L. Barber <harrybarber@protonmail.com>"]
+edition = "2018"
+license = "MIT"
+homepage = "https://github.com/hlb8122/rust-bitcoincash-addr"
+repository = "https://github.com/hlb8122/rust-bitcoincash-addr"
+description = """
+A simple library providing the encoding/decoding of Bitcoin Cash addresses.
+"""
+keywords = ["bitcoin", "cash", "cashaddr", "address", "base58"]
+categories = ["cryptography", "cryptography::cryptocurrencies"]
+exclude = ["/.travis.yml"]
+
+[badges]
+travis-ci = { repository = "hlb8122/rust-bitcoincash-addr" }
+
+[dependencies]
+bitcoin_hashes = "0.7.6"
+
+[dev-dependencies]
+hex = "0.4.2"

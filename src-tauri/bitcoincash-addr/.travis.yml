@@ -1,0 +1,15 @@
+dist: bionic
+language: rust
+rust:
+  - stable
+
+cache: cargo
+
+jobs:
+  include:
+  - stage: build
+    script:
+      cargo build --verbose
+  - stage: test
+    script:
+      cargo test --verbose

@@ -1,0 +1,62 @@
+[package]
+name = "secp256k1-abc"
+version = "0.20.3"
+authors = [ "Dawid Ciężarkiewicz <dpc@ucore.info>",
+            "Andrew Poelstra <apoelstra@wpsoftware.net>" ]
+license = "CC0-1.0"
+homepage = "https://github.com/raipay/secp256k1-abc/"
+repository = "https://github.com/raipay/secp256k1-abc/"
+documentation = "https://docs.rs/secp256k1-abc/"
+description = "Rust wrapper library for Pieter Wuille's `libsecp256k1`. Implements ECDSA and BIP 340 signatures and ABC Schnorr signatures for the SECG elliptic curve group secp256k1 and related utilities."
+keywords = [ "crypto", "ECDSA", "secp256k1", "libsecp256k1", "bitcoin" ]
+readme = "README.md"
+autoexamples = false # Remove when edition 2018 https://github.com/rust-lang/cargo/issues/5330
+
+# Should make docs.rs show all functions, even those behind non-default features
+[package.metadata.docs.rs]
+features = [ "rand", "rand-std", "serde", "recovery" ]
+
+[features]
+unstable = ["recovery", "rand-std"]
+default = ["std"]
+std = ["secp256k1-sys-abc/std"]
+# allow use of Secp256k1::new and related API that requires an allocator
+alloc = []
+rand-std = ["rand/std"]
+recovery = ["secp256k1-sys-abc/recovery"]
+lowmemory = ["secp256k1-sys-abc/lowmemory"]
+global-context = ["std", "rand-std", "global-context-less-secure"]
+global-context-less-secure = []
+
+[dependencies]
+secp256k1-sys-abc = { version = "0.4.1", default-features = false, path = "./secp256k1-sys-abc" }
+bitcoin_hashes = { version = "0.10", optional = true }
+rand = { version = "0.6", default-features = false, optional = true }
+serde = { version = "1.0", default-features = false, optional = true }
+
+
+[dev-dependencies]
+rand = "0.6"
+rand_core = "0.4"
+serde_test = "1.0"
+bitcoin_hashes = "0.10"
+
+[target.wasm32-unknown-unknown.dev-dependencies]
+wasm-bindgen-test = "0.3"
+rand = { version = "0.6", features = ["wasm-bindgen"] }
+
+
+[[example]]
+name = "sign_verify_recovery"
+required-features = ["recovery"]
+
+[[example]]
+name = "sign_verify"
+
+[[example]]
+name = "generate_keys"
+required-features = ["rand"]
+
+[workspace]
+members = ["secp256k1-sys-abc"]
+exclude = ["no_std_test"]
