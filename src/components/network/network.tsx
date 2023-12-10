@@ -46,7 +46,6 @@ export default component$(() => {
           }
           preventdefault:click
           onClick$={() => {
-            console.log("CMON NOw", store.url);
 
             store.urls.push(store.url!);
             window.localStorage.setItem("networkUrl",store.url);
@@ -54,8 +53,6 @@ export default component$(() => {
               "networkUrls",
               JSON.stringify(store.urls),
             );
-            // const urls = window.localStorage.getItem("networkUrls");
-            // store.urls = JSON.parse(urls!);
             emit("networkUrlupdate", { url: store.url, urls: store.urls });
           }}
         >
