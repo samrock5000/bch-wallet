@@ -429,12 +429,25 @@ export default component$(() => {
                           <select
                             class="select select-bordered select-xs w-full max-w-xs"
                             onInput$={(ev) => {
+                                //commitment cant be undefined if capability is set
+                                tokenStore.commitment = "";
                               //@ts-ignore
                               tokenStore.capability = (
                                 ev.target as HTMLInputElement
                               ).value;
-                              build();
+                              // build();
                               // console.log("tokenStore", tokenStore);
+                                const commitment = tokenStore.commitment;
+                                const capability = tokenStore.capability;
+                                invoke("valid_nft", { commitment, capability })
+                                  .then(() => {
+                                    store.validNFT = true;
+                                    build();
+                                  })
+                                  .catch((e) => {
+                                    store.validNFT = false;
+                                    console.error(e);
+                                  });
                             }}
                           >
                             <option disabled selected>
@@ -455,7 +468,8 @@ export default component$(() => {
                                 tokenStore.commitment = (
                                   ev.target as HTMLInputElement
                                 ).value;
-                                const commitment = canCreateToken.value
+                                const commitment = canCreateToken.value && 
+                                    (tokenStore.capability != undefined)
                                   ? tokenStore.commitment
                                   : undefined;
 
