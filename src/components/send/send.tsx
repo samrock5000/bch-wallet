@@ -650,6 +650,8 @@ export const TxInfo = component$(() => {
                           </label>
                           <span>{output.token.category}</span>
                         </div>
+                          {output.token.nft ?  
+
                         <div class="text-xs">
                           <h1 class="text-xs text-primary"> NFT: </h1>
                           <label class="text-xs text-secondary">
@@ -663,6 +665,7 @@ export const TxInfo = component$(() => {
                           </label>
                           <span>{output.token.nft?.commitment}</span>
                         </div>
+                          :   <></>}
                       </div>
                     )}
                   </div>

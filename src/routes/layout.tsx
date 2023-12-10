@@ -9,6 +9,7 @@ import {
   useContextProvider,
   // useTask$,
   useSignal,
+  // useOn,
   // useComputed$,
   // useOnWindow,
   // useOnDocument,
@@ -91,6 +92,13 @@ export default component$(() => {
     tokenUtxos: [],
   });
 
+  // useOn(
+  //   'close',
+  //   $((event) => {
+  //     const ev = event as CloseEvent;
+  //     console.log("WebSocket closed",ev);
+  //   })
+  // );
   const updateUtxoStore = $((address: string, networkUrl: string) => {
     invoke("update_utxo_store", { address, networkUrl })
       .then(() => {

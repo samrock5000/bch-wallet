@@ -171,7 +171,8 @@ export default component$(() => {
                         Category id
                       </label>
                       <p class="break-all">{utxo.token_data!.category} </p>
-                      <div class="card-actions justify-end">
+                      { utxo.token_data?.nft ? 
+                        <div class="card-actions justify-end" >
                         <label class="text-sm font-medium text-secondary">
                           Capability
                         </label>
@@ -185,6 +186,10 @@ export default component$(() => {
                         <p class="break-all">
                           {utxo.token_data!.nft?.commitment}{" "}
                         </p>
+                        
+                      </div>
+                      : <> </> }
+                      <div class="card-actions justify-end">
 
                         <button
                           type="button"
@@ -849,6 +854,8 @@ export const TxDetails = component$((tx: Transaction) => {
                           </label>
                           <span>{output.token.category}</span>
                         </div>
+                          {output.token.nft?  
+
                         <div class="text-xs">
                           <h1 class="text-xs text-primary"> NFT: </h1>
                           <label class="text-xs text-secondary">
@@ -869,6 +876,8 @@ export const TxDetails = component$((tx: Transaction) => {
                             </p>
                           </div>
                         </div>
+
+                          : <></>}
                       </div>
                     )}
                   </div>

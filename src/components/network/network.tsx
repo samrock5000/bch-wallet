@@ -2,6 +2,7 @@ import {
   component$,
   useContext,
   useContextProvider,
+  $,
   useStore,
   useVisibleTask$,
 } from "@builder.io/qwik";
@@ -20,6 +21,7 @@ export default component$(() => {
     url: "" /* undefined as string | null | undefined */,
     urls: ["localhost"],
     isValidUrl: false,
+    networkErr:"",
     chain: "",
     connection: false,
   });
@@ -58,7 +60,9 @@ export default component$(() => {
         >
           Connect
         </button>
+      
         <input
+          autoCorrect="off" 
           placeholder="my.electrum.server"
           required={true}
           onInput$={(ev) => {
@@ -68,6 +72,7 @@ export default component$(() => {
               .then(() => {
                 networkPing(url.concat(":50001"))
                   .then(() => {
+                    store.networkErr = "";
                     store.connection = true;
                     store.isValidUrl = true;
                     console.log("CONNECTION VALID");
@@ -75,18 +80,23 @@ export default component$(() => {
                   })
                   .catch((e) => {
                     console.error(e);
+                    store.networkErr = e;
                     store.isValidUrl = false;
                     console.log("No connection with URL");
+                    store.url == "" ? store.networkErr = "" : {};
                   });
               })
               .catch((e) => {
+                store.networkErr = e;
                 store.isValidUrl = false;
                 console.error(e);
+                // store.url == "" ? store.networkErr = "" : {};
               });
           }}
           type="text"
         />
 
+        <div class="text-xs text-stone-50">{store.networkErr}</div>
         <select
           class="select select-bordered select-xs w-full max-w-xs"
           onInput$={(ev) => {
