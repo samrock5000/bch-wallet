@@ -49,7 +49,7 @@ export default component$(() => {
             console.log("CMON NOw", store.url);
 
             store.urls.push(store.url!);
-
+            window.localStorage.setItem("networkUrl",store.url);
             window.localStorage.setItem(
               "networkUrls",
               JSON.stringify(store.urls),

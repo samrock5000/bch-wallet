@@ -52,6 +52,7 @@ export type ContextRdy = {
   rdy: boolean;
 };
 // import { getAddrFromHd } from "~/components/utils/utils";
+// export const networkUrl = "tcp://chipnet.imaginary.cash:50001";
 // export const networkUrl = "tcp://localhost:50001";
 export const networkChain = "test";
 // export const derivationPath = "m/44'/1'/0'/0/0";
@@ -123,6 +124,12 @@ export default component$(() => {
     webSocketID: 0,
   });
   useVisibleTask$(async ({ track }) => {
+    const isNetworkSet = (window.localStorage.getItem("networkUrl") != null) ;
+    store.networkUrl = window.localStorage.getItem("networkUrl");;
+    console.log("isNetworkSet",isNetworkSet)
+    if (!isNetworkSet) {
+    store.networkUrl = window.localStorage.getItem("networkUrl");;
+    }
     const networkUrlUpdated = track(() => store.networkUrl);
     const walletExist = track(() => mnemonicExist.value);
     track(() => store.networkConnection);
