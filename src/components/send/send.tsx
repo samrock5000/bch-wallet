@@ -97,11 +97,7 @@ export default component$(() => {
       storeContext.balance = walletData.balance;
       storeContext.utxos = walletData.utxos;
       storeContext.bip44Path = walletData.bip44Path;
-      console.log("UTXOS", storeContext.utxos);
       storeContext.networkUrl.concat(":50001");
-      // console.log("NETWORK", storeContext.networkUrl);
-      // console.log("contextSet", contextSet.rdy);
-      // console.log("SRC ADDR", storeContext.activeAddr);
       tokenGenesisStore.candidate = storeContext.utxos.filter(
         (e) => e.tx_pos == 0,
       )[0];
@@ -111,12 +107,7 @@ export default component$(() => {
         tokenStore.category = tokenStore.tokenUtxos[0].tx_hash!;
       }
 
-      console.log("Category", tokenGenesisStore.candidate);
       store.isTokenGenesisIndexAvailable = tokenStore.tokenUtxos?.length != 0;
-      console.log(
-        "store.isTokenGenesisIndexAvailable",
-        store.isTokenGenesisIndexAvailable,
-      );
     }
 
     track(() => txStore.broadcastResponse);
@@ -145,7 +136,6 @@ export default component$(() => {
     )
       .then((tx) => {
         txStore.raw = tx as string;
-        console.log("rawTX,", tx);
         // const transaction =
         decodeTransaction(txStore.raw).then((tx) => {
           TxDetailsStore.inputs = tx.inputs;
@@ -259,7 +249,6 @@ export default component$(() => {
                         : false;
                     showTxDetails.value = store.amountValid && store.validAddr;
                     canCreateToken.value = showTxDetails.value;
-                    console.log("canCreateToken", canCreateToken.value);
 
                     build();
                   }}
@@ -301,10 +290,6 @@ export default component$(() => {
                           : undefined;
                         showTxDetails.value =
                           store.amountValid && store.validAddr;
-                        console.log(
-                          "store.amountValid && store.validAddr",
-                          store.amountValid && store.validAddr,
-                        );
                       }}
                     >
                       MAX AMOUNT
@@ -347,10 +332,6 @@ export default component$(() => {
                                 store.isTokenCreateChecked == false
                                   ? true
                                   : false;
-                              console.log(
-                                "store.isTokenCreateChecked",
-                                store.isTokenCreateChecked,
-                              );
                               canCreateToken.value = store.isTokenCreateChecked;
                               tokenStore.amount = canCreateToken.value
                                 ? tokenStore.amount
@@ -436,7 +417,6 @@ export default component$(() => {
                                 ev.target as HTMLInputElement
                               ).value;
                               // build();
-                              // console.log("tokenStore", tokenStore);
                                 const commitment = tokenStore.commitment;
                                 const capability = tokenStore.capability;
                                 invoke("valid_nft", { commitment, capability })

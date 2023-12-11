@@ -31,9 +31,9 @@ export default component$(() => {
         const res = JSON.parse(r);
         storeBalance.confirmed = res.confirmed;
         storeBalance.unconfirmed = res.unconfirmed;
-        const x = res.confirmed;
-        console.log(" NETWORK RES", r);
-        console.log(" NETWORK RES X", x);
+        // const x = res.confirmed;
+        // console.log(" NETWORK RES", r);
+        // console.log(" NETWORK RES X", x);
       });
       // storeBalance.confirmed = walletData.balance;
     }

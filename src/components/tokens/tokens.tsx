@@ -84,11 +84,9 @@ export default component$(() => {
     store.utxos = walletData.utxos;
     store.tokensUtxos = walletData.tokenUtxos;
     store.derivationPath = walletData.bip44Path;
-    console.log("TOKEN INIT", store.derivationPath);
     store.tokenUtxoSatoshiBalance = walletData.tokenUtxoBalance;
     const storeUpdated = track(() => contextSet.rdy);
     if (storeUpdated) {
-      console.log("token data ready", store.tokensUtxos);
       const address = walletData.activeAddr;
       invoke("token_cash_address", { address })
         .then((addr) => {

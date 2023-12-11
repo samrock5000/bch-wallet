@@ -9,7 +9,6 @@ import {
   useContextProvider,
   // useTask$,
   useSignal,
-  // useOn,
   // useComputed$,
   // useOnWindow,
   // useOnDocument,
@@ -74,6 +73,7 @@ export default component$(() => {
     rdy: false,
   });
   const subscriptionHasUpdated = useSignal(false);
+  const wsClientInstanceCount = useSignal(0);
   const urlCtxStore = useStore<NetworkUrlUpdate>({
     url: "",
     urls: [""],
@@ -92,13 +92,6 @@ export default component$(() => {
     tokenUtxos: [],
   });
 
-  // useOn(
-  //   'close',
-  //   $((event) => {
-  //     const ev = event as CloseEvent;
-  //     console.log("WebSocket closed",ev);
-  //   })
-  // );
   const updateUtxoStore = $((address: string, networkUrl: string) => {
     invoke("update_utxo_store", { address, networkUrl })
       .then(() => {
@@ -115,7 +108,6 @@ export default component$(() => {
             // @ts-ignore
             store.tokenUtxos = utxos.filter((e) => e.token_data);
             store.balance = utxoSum(store.utxos);
-            console.log("tokenUtxos", store.tokenUtxos);
             contextSet.rdy = true;
             //TODO rm contextmenu
             // tauriWindow.getCurrent().listen(TauriEvent.WINDOW_CLOSE_REQUESTED, async () => {
@@ -132,18 +124,24 @@ export default component$(() => {
     webSocketID: 0,
   });
   useVisibleTask$(async ({ track }) => {
-    const isNetworkSet = (window.localStorage.getItem("networkUrl") != null) ;
-    store.networkUrl = window.localStorage.getItem("networkUrl");;
-    console.log("isNetworkSet",isNetworkSet)
-    if (!isNetworkSet) {
-    store.networkUrl = window.localStorage.getItem("networkUrl");;
-    }
-    const networkUrlUpdated = track(() => store.networkUrl);
+  console.log("WS INSTANCE COUNT",wsClientInstanceCount.value)
+    doesWalletExist().then(async (res) => {
+      mnemonicExist.value = res as boolean;
+    });
+
     const walletExist = track(() => mnemonicExist.value);
-    track(() => store.networkConnection);
     mnemonicExist.value = walletExist;
-    // const urls = window.localStorage.getItem("networkUrls");
-    urlCtxStore.url = networkUrlUpdated;
+
+    const isNetworkSet = (window.localStorage.getItem("networkUrl") != null) ;
+    if (!isNetworkSet) {
+      window.localStorage.setItem("networkUrl",store.networkUrl!);
+    } else {
+      store.networkUrl = window.localStorage.getItem("networkUrl")!;
+    }
+  
+    const networkUrlUpdated = track(() => store.networkUrl);
+
+    urlCtxStore.url = networkUrlUpdated!;
 
     /* const unlistenNetworkUrlUpdate = */ await listen<NetworkUrlUpdate>(
       "networkUrlupdate",
@@ -166,7 +164,7 @@ export default component$(() => {
     //   window.localStorage.setItem("networkUrl", "localhost");
     //   store.networkUrl = "localhost"; //window.localStorage.getItem("networkUrl")!;
     // }
-    console.log("store.networkUrl.concat", store.networkUrl);
+    // console.log("store.networkUrl.concat", store.networkUrl);
     networkPing(store.networkUrl.concat(":50001"))
       .then(() => {
         store.networkConnection = true;
@@ -175,10 +173,6 @@ export default component$(() => {
         store.networkConnection = false;
         console.error("networkPing", e);
       });
-
-    doesWalletExist().then(async (res) => {
-      mnemonicExist.value = res as boolean;
-    });
 
     if (!walletExist) {
       /* const unlisten =  */ await listen<WalletInit>(
@@ -192,9 +186,16 @@ export default component$(() => {
       );
     } else {
       const setListener = async () => {
+
         const wsClient = await WebSocket.connect(
           `ws://${store.networkUrl.concat(":50003")}`,
         );
+        wsClientInstanceCount.value += 1;
+        if  (wsClientInstanceCount.value > 1) {
+          wsClient.disconnect().then(()=> {
+            console.log("WS DISCONNECTED");
+          })
+        }
         // const wsClient = await WebSocket.connect(
         // "ws://chipnet.imaginary.cash:50003",
         // );
@@ -209,9 +210,9 @@ export default component$(() => {
           params: [store.activeAddr],
           id: subscription.webSocketID,
         });
+        wsClientInstanceCount.value != 1 ? {} : 
         wsClient.send(req).catch((e) => console.error("wsClient.send", e));
         wsClient.addListener((res) => {
-          // console.log("Lisetener ready", r);
           subscription.type = res.type;
           if (subscription.type == "Text") {
             const data = JSON.parse(res.data as string);
@@ -221,16 +222,17 @@ export default component$(() => {
             if (subscription.hash != latestSubscription) {
               // updateUtxoStore(store.activeAddr, store.networkUrl)
               /* .then(() => */
-              wsClient
+                wsClient
                 .disconnect()
                 .then(() => {
                   console.log("WS DISCONNECTED", subscription.webSocketID);
+                wsClientInstanceCount.value -= 1;
                   store.networkConnection = false;
                 })
                 .then(() => {
                   updateUtxoStore(
                     store.activeAddr,
-                    store.networkUrl.concat(":50001")!,
+                    store.networkUrl!.concat(":50001")!,
                   );
                 })
                 .catch((e) => {
@@ -240,7 +242,7 @@ export default component$(() => {
                   setTimeout(() => {
                     subscriptionHasUpdated.value = true;
                     contextUpdated.value = true;
-                  }, 2000);
+                  }, 1000);
                 });
             }
           }
