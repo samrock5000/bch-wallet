@@ -755,7 +755,7 @@ export const SendTokenModal = component$((props: Utxo) => {
                     });
                   if (store.buildIsOk) {
                     const transaction = store.rawTx;
-                    const networkUrl = walletData.networkUrl.concat(":50001");
+                    const networkUrl = walletData.networkUrl!.concat(":50001");
 
                     // invoke("broadcast_transaction", { transaction, networkUrl })
                     broadcast_transaction(transaction, networkUrl)

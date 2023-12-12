@@ -97,7 +97,7 @@ export default component$(() => {
       storeContext.balance = walletData.balance;
       storeContext.utxos = walletData.utxos;
       storeContext.bip44Path = walletData.bip44Path;
-      storeContext.networkUrl.concat(":50001");
+      storeContext.networkUrl!.concat(":50001");
       tokenGenesisStore.candidate = storeContext.utxos.filter(
         (e) => e.tx_pos == 0,
       )[0];
@@ -153,7 +153,7 @@ export default component$(() => {
   const broadcast = $(async () =>
     broadcast_transaction(
       txStore.raw!,
-      storeContext.networkUrl.concat(":50001"),
+      storeContext.networkUrl!.concat(":50001"),
     )
       .then(async (resp) => {
         txStore.broadcastResponse = (await resp) as any;

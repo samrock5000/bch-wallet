@@ -1043,11 +1043,11 @@ fn valid_nft(commitment: &str, capability: &str) -> Result<u8, String> {
 }
 
 #[tauri::command]
-async fn close_wallet_create(window: Window) {
+async fn close_splash(window: Window) {
     // Close window
     window
-        .get_window("create-wallet")
-        .expect("no window labeled 'create-wallet' found")
+        .get_window("splash")
+        .expect("no window labeled 'splash' found")
         .close()
         .unwrap();
     // Show main window
@@ -1059,18 +1059,18 @@ async fn close_wallet_create(window: Window) {
 }
 
 #[tauri::command]
-async fn open_wallet_create(window: Window) {
-    // Close window
-    window
-        .get_window("create-wallet")
-        .expect("no window labeled 'create-wallet' found")
-        .show()
-        .unwrap();
+async fn open_splash(window: Window) {
     // Show main window
     window
         .get_window("main")
         .expect("no window labeled 'main' found")
         .hide()
+        .unwrap();
+    // Close window
+    window
+        .get_window("splash")
+        .expect("no window labeled 'splash' found")
+        .show()
         .unwrap();
 }
 
@@ -1096,7 +1096,25 @@ fn main() {
         }
     }
     tauri::Builder::default()
-        .plugin(tauri_plugin_websocket::init())
+        .plugin(tauri_plugin_websocket::init()) 
+        .setup(|app| {
+      let splashscreen_window = app.get_window("splash").unwrap();
+      let main_window = app.get_window("main").unwrap();
+        main_window.hide();
+    splashscreen_window.show();
+      // we perform the initialization code on a new task so the app doesn't freeze
+      tauri::async_runtime::spawn(async move {
+        // initialize your app here instead of sleeping :)
+        println!("Initializing...");
+        std::thread::sleep(std::time::Duration::from_secs(10));
+        println!("Done initializing.");
+
+        // After it's done, close the splashscreen and display the main window
+        splashscreen_window.close().unwrap();
+        main_window.show().unwrap();
+      });
+      Ok(())
+    })
         .invoke_handler(tauri::generate_handler![
             // create_nft,
             // create_token,

@@ -165,7 +165,7 @@ export default component$(() => {
     //   store.networkUrl = "localhost"; //window.localStorage.getItem("networkUrl")!;
     // }
     // console.log("store.networkUrl.concat", store.networkUrl);
-    networkPing(store.networkUrl.concat(":50001"))
+    networkPing(store.networkUrl!.concat(":50001"))
       .then(() => {
         store.networkConnection = true;
       })
@@ -188,7 +188,7 @@ export default component$(() => {
       const setListener = async () => {
 
         const wsClient = await WebSocket.connect(
-          `ws://${store.networkUrl.concat(":50003")}`,
+          `ws://${store.networkUrl!.concat(":50003")}`,
         );
         wsClientInstanceCount.value += 1;
         if  (wsClientInstanceCount.value > 1) {
@@ -261,7 +261,7 @@ export default component$(() => {
         })
         .catch((e) => console.error(e))
         .finally(() => {
-          updateUtxoStore(store.activeAddr, store.networkUrl.concat(":50001")!)
+          updateUtxoStore(store.activeAddr, store.networkUrl!.concat(":50001")!)
             // .then(() => {})
             .catch((e) => console.error("updateUtxoStore err", e))
             .finally(() => {

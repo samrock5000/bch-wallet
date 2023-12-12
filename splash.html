@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>My Website</title>
+  </head>
+  <body>
+    <main>
+<div id="splashcontainer">
+  <div id="splasha">SPLASH AA</div>
+  <div id="splashb">SPLASH BB </div>
+</div>
+    </main>
+<style>
+#splashcontainer {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  height: 162px;
+  overflow: hidden;
+
+  animation-name: splashUp;
+  animation-delay: 3s;
+}
+
+#splash {
+  width: 143px;
+
+  animation-name: splashExpand;
+}
+
+#splash,
+#splashb {
+  animation-delay: 1s;
+}
+#splashcontainer,
+#splash,
+#splashb {
+  animation-fill-mode: forwards;
+  animation-duration: 2s;
+}
+#splasha {
+  position: absolute;
+  width: 143px;
+  height: 162px;
+}
+#splashb {
+  margin-left: -857px;
+  height: 162px;
+  /*Override Foundation image scaling >> */
+  max-width: inherit;   
+
+  animation-name: splashBRight;
+}
+
+@keyframes splashExpand {
+  from {
+    width: 143px;
+  }
+
+  100% {
+    width: 1000px;
+  }
+}
+@keyframes splashBRight {
+  from {
+    margin-left: -857px;
+  }
+
+  to {
+    margin-left: 143px;
+  }
+}
+@keyframes splashUp {
+  from {
+    top: 50%;
+  }
+
+  90% {
+    opacity: 0.9;
+  }
+  to {
+    top: 5%;
+    transform: translate(-50%, 0);
+    opacity: 0;
+  }
+}
+
+    </style>
+
+  </body>
+</html>
