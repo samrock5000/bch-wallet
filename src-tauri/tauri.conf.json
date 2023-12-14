@@ -7,8 +7,8 @@
     "withGlobalTauri": true
   },
   "package": {
-    "productName": "wallet-bch",
-    "version": "0.1.0"
+    "productName": "cashcaster",
+    "version": "0.1.1"
   },
   "tauri": {
     "allowlist": {
