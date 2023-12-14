@@ -13,7 +13,7 @@ use bitcoinsuite_core::hash::{Hashed, Ripemd160, Sha256, Sha256d};
 use bitcoinsuite_core::script::{Op, Script};
 use bitcoinsuite_core::ser::{BitcoinSer, CompactUint};
 use bitcoinsuite_core::tx::{
-    self, CashToken, Commitment, NonFungibleTokenCapability, Transaction, TxId, NFT,
+    self, CashToken, Commitment, NonFungibleTokenCapability, Output, Transaction, TxId, NFT,
 };
 use bytes::Bytes;
 use electrum_client::bitcoin::network::constants::ParseMagicError;
@@ -671,6 +671,7 @@ fn build_p2pkh_transaction(
         ) {
             Ok(data) => Ok(data),
             Err(e) => Err(e.to_string()),
+            //
         }
     } else {
         match create_tx_for_destination_output(
@@ -687,7 +688,11 @@ fn build_p2pkh_transaction(
         }
     };
     println!("build p2pkh res\n{:?}\n", raw_tx);
-    raw_tx
+    match raw_tx {
+        Ok(res) => Ok(json!({"rawTx":res.raw_tx,"dust":res.dust}).to_string()),
+        Err(e) => Err(e.to_string()),
+    }
+    // json!({})raw_tx
 }
 #[tauri::command]
 async fn broadcast_transaction(transaction: &str, network_url: &str) -> Result<String, String> {
@@ -976,7 +981,6 @@ pub fn create_nft(commitment: &str, capability: &str) -> Option<NFT> {
             commitment: Commitment(commitment.unwrap().into()),
             capability,
         });
-        println!("CREATE NFT {:#?} ", res);
         res
     } else {
         None
@@ -1050,26 +1054,11 @@ async fn close_splash(window: Window) {
         .expect("no window labeled 'splash' found")
         .close()
         .unwrap();
+    println!("Done initializing.");
     // Show main window
     window
         .get_window("main")
         .expect("no window labeled 'main' found")
-        .show()
-        .unwrap();
-}
-
-#[tauri::command]
-async fn open_splash(window: Window) {
-    // Show main window
-    window
-        .get_window("main")
-        .expect("no window labeled 'main' found")
-        .hide()
-        .unwrap();
-    // Close window
-    window
-        .get_window("splash")
-        .expect("no window labeled 'splash' found")
         .show()
         .unwrap();
 }
@@ -1084,6 +1073,7 @@ fn check_url(url: &str) -> Result<(), String> {
         Err(e) => Err(e.to_string()),
     }
 }
+
 // #[tokio::main]
 /* async  */
 fn main() {
@@ -1096,31 +1086,9 @@ fn main() {
         }
     }
     tauri::Builder::default()
-        .plugin(tauri_plugin_websocket::init()) 
-        .setup(|app| {
-      let splashscreen_window = app.get_window("splash").unwrap();
-      let main_window = app.get_window("main").unwrap();
-        main_window.hide();
-    splashscreen_window.show();
-      // we perform the initialization code on a new task so the app doesn't freeze
-      tauri::async_runtime::spawn(async move {
-        // initialize your app here instead of sleeping :)
-        println!("Initializing...");
-        std::thread::sleep(std::time::Duration::from_secs(10));
-        println!("Done initializing.");
-
-        // After it's done, close the splashscreen and display the main window
-        splashscreen_window.close().unwrap();
-        main_window.show().unwrap();
-      });
-      Ok(())
-    })
+        .plugin(tauri_plugin_websocket::init())
         .invoke_handler(tauri::generate_handler![
-            // create_nft,
-            // create_token,
             check_url,
-            // close_wallet_create,
-            // open_wallet_create,
             create_db,
             does_db_exist,
             get_db_unspent_utxos,
@@ -1164,6 +1132,23 @@ fn main() {
             network_ping,
             decode_transaction,
         ])
+        .setup(|app| {
+            let splashscreen_window = app.get_window("splash").unwrap();
+            let main_window = app.get_window("main").unwrap();
+            _ = main_window.hide();
+            _ = splashscreen_window.show();
+            // we perform the initialization code on a new task so the app doesn't freeze
+            tauri::async_runtime::spawn(async move {
+                // initialize your app here instead of sleeping :)
+                println!("Initializing...");
+                std::thread::sleep(std::time::Duration::from_secs(3));
+                // println!("Done initializing.");
+                // After it's done, close the splashscreen and display the main window
+                splashscreen_window.close().unwrap();
+                main_window.show().unwrap();
+            });
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

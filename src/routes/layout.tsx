@@ -84,7 +84,7 @@ export default component$(() => {
     balance: 0,
     tokenUtxoBalance: 0,
     mnemonic: "",
-    networkUrl: "localhost",
+    networkUrl: "chipnet.imaginary.cash",
     network: "test",
     networkConnection: false,
     bip44Path: derivationPath,
@@ -124,7 +124,6 @@ export default component$(() => {
     webSocketID: 0,
   });
   useVisibleTask$(async ({ track }) => {
-  console.log("WS INSTANCE COUNT",wsClientInstanceCount.value)
     doesWalletExist().then(async (res) => {
       mnemonicExist.value = res as boolean;
     });
@@ -156,6 +155,7 @@ export default component$(() => {
         console.log(
           `networkUrl updates ${event.windowLabel}, payload: ${event.payload}`,
         );
+              invoke("close_splash").catch((e)=> console.error(e))
       },
     );
 
@@ -251,7 +251,6 @@ export default component$(() => {
           if (typeof res === "string") {
             store.networkConnection = false;
           }
-          // console.log("subscription hash", subscription.hash);
         });
       };
 
@@ -262,13 +261,13 @@ export default component$(() => {
         .catch((e) => console.error(e))
         .finally(() => {
           updateUtxoStore(store.activeAddr, store.networkUrl!.concat(":50001")!)
-            // .then(() => {})
             .catch((e) => console.error("updateUtxoStore err", e))
             .finally(() => {
               setListener();
             });
         });
     }
+
   });
 
   useContextProvider(WalletContext, store);
@@ -290,11 +289,11 @@ export default component$(() => {
         <Header />
         <Slot />
         {/* <ManualUtxoCheck /> */}
-        {/* <Footer/> */}
       </div>
     </>
   );
 });
+
 
 /* const ManualUtxoCheck = component$(() => {
   const walletData = useContext(WalletContext);

@@ -3,9 +3,7 @@
     "beforeBuildCommand": "npm run build",
     "beforeDevCommand": "npm run dev",
     "devPath": "http://localhost:5173",
-    "distDir": [
-      "../dist"
-    ],
+    "distDir": ["../dist"],
     "withGlobalTauri": true
   },
   "package": {
@@ -27,25 +25,19 @@
       },
       "http": {
         "all": true,
-        "scope": [
-          "http://bch-wallet./"
-        ]
+        "scope": ["http://bch-wallet./"]
       },
       "path": {
         "all": true
       },
       "fs": {
         "exists": true,
-        "scope": [
-          "$HOME/.p2p-wallet/*"
-        ]
+        "scope": ["$HOME/.p2p-wallet/*"]
       },
       "protocol": {
         "all": true,
         "asset": true,
-        "assetScope": [
-          "../dist"
-        ]
+        "assetScope": ["../dist"]
       },
       "window": {
         "setDecorations": true,
@@ -96,25 +88,30 @@
     "updater": {
       "active": false
     },
-    "macOSPrivateApi":true,
+    "macOSPrivateApi": true,
     "windows": [
       {
         "fullscreen": false,
+        "center": true,
         "height": 800,
         "resizable": true,
         "title": "bch-wallet",
         "label": "main",
         "width": 640,
         "url": "index.html",
-        "visible":false
+        "visible": false      
       },
       {
         "label": "splash",
-        "title": "Tauri",
+        "title": "cashcaster",
         "url": "splash.html",
-        "decorations":false,
-        "visible":false,
-        "transparent":true
+        "decorations": false,
+        "alwaysOnTop": true,
+        "focus": true,
+        "visible": false,
+        "transparent": true,
+        "fullscreen": false,
+        "center": true
       }
     ]
   }

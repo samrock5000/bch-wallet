@@ -6,17 +6,15 @@ use crate::coins::selection::{
     non_token_amount_from_utxo, selection_final_candidates, BranchAndBoundCoinSelection,
     CoinSelectionAlgorithm, Excess, FeeRate, UtxoCandidates, WeightedUtxo,
 };
-use crate::coins::utxo::{UnspentUtxos};
+use crate::coins::utxo::UnspentUtxos;
 use crate::error::WalletError;
 use crate::keys::bip44::{
     default_testnet_derivation, derive_hd_path_private_key, get_hd_node_from_db_seed,
 };
 
-use std::str::FromStr;
 use bitcoinsuite_core::ser::CompactUint;
-use bitcoinsuite_core::tx::{
-     CashToken, Commitment, NonFungibleTokenCapability, TxId, NFT,
-};
+use bitcoinsuite_core::tx::{CashToken, Commitment, NonFungibleTokenCapability, TxId, NFT};
+use std::str::FromStr;
 // use bitcoinsuite_core::tx::CashToken;
 use bitcoinsuite_core::{
     hash::{Hashed, Sha256d},
@@ -69,7 +67,7 @@ pub fn create_nft(commitment: &str, capability: &str) -> Option<NFT> {
     }
 }
 
-fn get_private_key(derivation_path:&str) -> Result<[u8; 32], String> {
+fn get_private_key(derivation_path: &str) -> Result<[u8; 32], String> {
     match DerivationPath::from_str(derivation_path) {
         Ok(deriv_path) => {
             match get_hd_node_from_db_seed(None, electrum_client::bitcoin::Network::Testnet) {
@@ -85,16 +83,21 @@ fn get_private_key(derivation_path:&str) -> Result<[u8; 32], String> {
 }
 
 pub type RawTransactionHex = String;
+#[derive(Debug)]
+pub struct DustAndRawTransactionHex {
+    pub raw_tx: RawTransactionHex,
+    pub dust: u64,
+}
 
 pub fn create_tx_for_destination_output(
-    derivation_path:&str,
+    derivation_path: &str,
     token_options: Option<TokenOptions>,
     destination_script: &Script,
     src_script: &Script,
     amount: u64,
     utxos: UnspentUtxos,
     required_utxos: Option<UnspentUtxos>,
-) -> Result<RawTransactionHex, WalletError> {
+) -> Result<DustAndRawTransactionHex, WalletError> {
     // println!("TOKEN OPTIONS{:#?}", token_options);
     // println!("REQ TOKEN {:#?}", required_utxos);
     let fee = FeeRate::from_sat_per_vb(0.0);
@@ -145,7 +148,7 @@ pub fn create_tx_for_destination_output(
         let dest_amount = token_options.as_ref().unwrap().amount.0;
         if dest_amount > total_av_token_amt {
             return Err(WalletError::Generic {
-                reason: "token request amount > available".to_string(),
+                reason: "Token: request amount > available".to_string(),
             });
         } else if total_av_token_amt == dest_amount {
             None
@@ -173,10 +176,7 @@ pub fn create_tx_for_destination_output(
     };
     let dust = calculate_dust(&destination_output);
     if amount < dust {
-        return Err(WalletError::DustValue {
-            amount,
-            dust,
-        });
+        return Err(WalletError::DustValue { amount, dust });
     }
 
     let available_sats = non_token_amount_from_utxo(&utxos);
@@ -188,10 +188,14 @@ pub fn create_tx_for_destination_output(
             change: None,
             selected: av_utxos,
         };
-        let tx_size = build_transaction_p2pkh(derivation_path, &mut utxos, vec![destination_output.clone()]);
+        let tx_size = build_transaction_p2pkh(
+            derivation_path,
+            &mut utxos,
+            vec![destination_output.clone()],
+        );
         destination_output.value = destination_output.value - tx_size?.len() as u64 / 2;
 
-        let tx_hex = build_transaction_p2pkh(derivation_path,&mut utxos, vec![destination_output]);
+        let tx_hex = build_transaction_p2pkh(derivation_path, &mut utxos, vec![destination_output]);
         Ok(tx_hex?)
     } else {
         let req_utxos = if token_genesis_utxos.is_empty() {
@@ -201,7 +205,7 @@ pub fn create_tx_for_destination_output(
         };
 
         let mut maybe_change = Output {
-            script:src_script.clone(),
+            script: src_script.clone(),
             token: token_change,
             ..Default::default()
         };
@@ -215,81 +219,85 @@ pub fn create_tx_for_destination_output(
         ) {
             Ok(selection) => {
                 match selection.excess {
-                    Excess::Change { amount, fee:_} => {
+                    Excess::Change { amount, fee: _ } => {
                         let tx_size = build_transaction_p2pkh(
                             derivation_path,
                             &mut selection_final_candidates(&selection).unwrap(),
                             vec![maybe_change.clone(), destination_output.clone()],
                         )
-                        .unwrap().len()
+                        .unwrap()
+                        .len()
                             / 2;
                         let change_amount = amount;
-                        let total_relay_fee = tx_size as u64; 
+                        let total_relay_fee = tx_size as u64;
                         //Check if change can cover relay fee and leftover is not below dust
-                        if  (change_amount - total_relay_fee) > calculate_dust(&maybe_change) {
+                        if (change_amount - total_relay_fee) > calculate_dust(&maybe_change) {
                             maybe_change.value += change_amount;
                             maybe_change.value -= total_relay_fee;
                             build_transaction_p2pkh(
                                 derivation_path,
                                 &mut selection_final_candidates(&selection).unwrap(),
-                                vec![maybe_change,destination_output],
+                                vec![maybe_change, destination_output],
                             )
                         } else {
-                        let tx_size = build_transaction_p2pkh(
-                                    derivation_path,
-                            &mut selection_final_candidates(&selection).unwrap(),
-                            vec![destination_output.clone()],
-                        ).unwrap().len() / 2;
+                            let tx_size = build_transaction_p2pkh(
+                                derivation_path,
+                                &mut selection_final_candidates(&selection).unwrap(),
+                                vec![destination_output.clone()],
+                            )
+                            .unwrap()
+                            .len()
+                                / 2;
                             destination_output.value -= tx_size as u64;
                             build_transaction_p2pkh(
-                                 derivation_path,   
+                                derivation_path,
                                 &mut selection_final_candidates(&selection).unwrap(),
                                 vec![destination_output],
                             )
-                            
                         }
                     }
                     Excess::NoChange {
-                        dust_threshold:_,
+                        dust_threshold: _,
                         remaining_amount,
-                        change_fee:_,
+                        change_fee: _,
                     } => {
-                        // println!("dust_threshold {dust_threshold}\nremaining_amount {remaining_amount}\nchange_fee {change_fee}");
                         let tx_size = build_transaction_p2pkh(
-                                    derivation_path,
+                            derivation_path,
                             &mut selection_final_candidates(&selection).unwrap(),
                             vec![destination_output.clone()],
                         )
-                        .unwrap().len()
+                        .unwrap()
+                        .len()
                             / 2;
-                            destination_output.value += remaining_amount;
-                            destination_output.value -= tx_size as u64;
-                            build_transaction_p2pkh(
-                                    derivation_path,
-                                &mut selection_final_candidates(&selection).unwrap(),
-                                vec![destination_output],
-                            )
+                        destination_output.value += remaining_amount;
+                        destination_output.value -= tx_size as u64;
+                        build_transaction_p2pkh(
+                            derivation_path,
+                            &mut selection_final_candidates(&selection).unwrap(),
+                            vec![destination_output],
+                        )
                     }
                 }
-            },
-                Err(_) => Err(WalletError::Generic { reason: "whatevr".to_string() })
-
+            }
+            Err(e) => Err(WalletError::Generic {
+                reason: format!("Coin Selection Error: {:?}", e),
+            }),
         };
         coins
-    
     };
     match raw_transactopn_hex {
-        Ok(tx_hex) => Ok(tx_hex),
+        Ok(tx_hex) => Ok(DustAndRawTransactionHex {
+            dust,
+            raw_tx: tx_hex,
+        }),
         Err(e) => Err(WalletError::Generic {
             reason: e.to_string(),
         }),
     }
 }
 
-
-
 pub fn build_transaction_p2pkh(
-    derivation_path:&str,
+    derivation_path: &str,
     selected_outputs: &mut UtxoCandidates,
     destination_outputs: Vec<Output>,
 ) -> Result<RawTransactionHex, WalletError> {
@@ -330,7 +338,8 @@ pub fn build_transaction_p2pkh(
             });
         }
 
-        let secret_key = SecretKey::from_slice(&mut get_private_key(derivation_path).clone().unwrap());
+        let secret_key =
+            SecretKey::from_slice(&mut get_private_key(derivation_path).clone().unwrap());
 
         let secp = Secp256k1::new();
         let sighash = hex::decode(signature_serialized).unwrap();

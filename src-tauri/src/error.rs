@@ -75,3 +75,20 @@ impl From<WalletError> for serde_json::Error {
         }
     }
 }
+impl From<WalletError> for serde_json::Value {
+    fn from(value: WalletError) -> Self {
+        match value {
+            _ => value.into(),
+        }
+    }
+}
+impl Into<WalletError> for serde_json::Value {
+    fn into(self) -> WalletError {
+        WalletError::Generic {
+            reason: match self.as_str() {
+                Some(err) => err.to_string(),
+                None => "serde_json::Value to wallet Err".to_string(),
+            },
+        }
+    }
+}

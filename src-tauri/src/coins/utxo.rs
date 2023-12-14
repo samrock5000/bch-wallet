@@ -433,5 +433,109 @@ mod test {
             .unwrap()
         ); */
     } */
+
+
+    //Possibly useful later?
+    fn calculate_dust(output: &str /* Output */) -> u64 {
+    let output = Value::from(output);
+    let amount = match output["amount"].as_number() {
+        Some(v) => match v.as_u64() {
+            Some(value) => value,
+            None => 0, /*  Err(WalletError::Generic {
+                           reason: "key[value].as_number() ERR".to_string(),
+                       }), */
+        },
+        None => 0,
+    };
+    //Should be to unwrap, Validation should have happened.
+    let script = address_to_p2pkh(output["script"].as_str().unwrap()).unwrap();
+    let token = match output["token"].as_object() {
+        Some(token_data) => {
+            let amount = match token_data["amount"].as_str() {
+                Some(amt) => match amt.parse::<u64>() {
+                    Ok(amt) => Ok(amt),
+                    Err(e) => Err(WalletError::Generic {
+                        reason: e.to_string(),
+                    }),
+                },
+
+                None => Err(WalletError::Generic {
+                    reason: "token_data[amt].as_str() ERR".to_string(),
+                }),
+            };
+
+            let category = match token_data["category"].as_str() {
+                Some(categoy) => Ok(categoy),
+                None => Err(WalletError::Generic {
+                    reason: "token_data[categoy].as_str() ERR".to_string(),
+                }),
+            };
+
+            let nft: Result<Option<NFT>, WalletError> = if token_data.contains_key("nft") {
+                match token_data["nft"].as_object() {
+                    Some(nft) => {
+                        let commitment = match nft["commitment"].as_str() {
+                            Some(commitment) => Commitment(hex::decode(commitment).unwrap().into()),
+                            None => Commitment(Bytes::copy_from_slice(vec![].as_ref())),
+                        };
+                        let capability = match nft["capability"].as_str() {
+                            Some(capability) => match capability {
+                                "none" => Ok(NonFungibleTokenCapability(tx::Capability::None)),
+                                "mutable" => {
+                                    Ok(NonFungibleTokenCapability(tx::Capability::Mutable))
+                                }
+                                "minting" => {
+                                    Ok(NonFungibleTokenCapability(tx::Capability::Minting))
+                                }
+                                _ => Err(Value::Null),
+                            },
+                            None => Err(Value::Null),
+                        };
+                        let nft = if capability.is_ok() {
+                            Ok(Some(NFT {
+                                capability: capability.unwrap(),
+                                commitment,
+                            }))
+                        } else {
+                            Ok(None)
+                        };
+
+                        nft
+                    }
+                    None => Ok(None),
+                }
+            } else {
+                Ok(None)
+            };
+
+            let cashtoken: Result<Option<CashToken>, WalletError> =
+                if category.is_ok() && amount.is_ok() && nft.is_ok() {
+                    let category = Sha256d::from_be_hex(&category.unwrap());
+
+                    let cashtoken = CashToken {
+                        amount: CompactUint(amount.unwrap()),
+                        category: TxId::from(category.unwrap()),
+                        nft: nft.unwrap(),
+                    };
+                    Ok(Some(cashtoken))
+                } else {
+                    Err(WalletError::Generic {
+                        reason: "cashtoken serde json error".to_string(),
+                    })
+                };
+            cashtoken
+        }
+        None => Ok(None),
+    };
+    let output = Output {
+        script,
+        token: token.unwrap(),
+        value: amount,
+    };
+    output.ser_len() as u64 * 3 + 444 as u64
+}
+
+
+
 }
 */

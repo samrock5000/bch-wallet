@@ -18,7 +18,8 @@ export default component$(() => {
   const networkCtxSet = useContext(UrlContext);
 
   const store = useStore({
-    url: "" /* undefined as string | null | undefined */,
+    url: "chipnet.imaginary.cash", /* undefined as string | null | undefined */
+    //Currenly useless
     urls: ["localhost"],
     isValidUrl: false,
     networkErr:"",
@@ -27,17 +28,9 @@ export default component$(() => {
   });
 
   useVisibleTask$(({ track }) => {
-    // const storeUpdated = track(() => contextSet.rdy);
-    /*   const urlsUpdated =  */ track(() => store.urls);
-    // store.urls = JSON.parse(window.localStorage.getItem("networkUrls")!);
-    store.urls = networkCtxSet.urls;
-    // if (storeUpdated) {
-    //   // store.urls = props.urls;
-    //   // console.log("VISIBLE STORE URLS ", store.urls);
-    //   // console.log("VISIBLE URLS UPDATED", urlsUpdated);
-    // }
+    // track(() => store.urls);
+    // store.urls = networkCtxSet.urls;
   });
-  // console.log("STORE URLS ", store.urls);
 
   return (
     <>
@@ -49,12 +42,12 @@ export default component$(() => {
           preventdefault:click
           onClick$={() => {
 
-            store.urls.push(store.url!);
+            // store.urls.push(store.url!);
             window.localStorage.setItem("networkUrl",store.url);
-            window.localStorage.setItem(
-              "networkUrls",
-              JSON.stringify(store.urls),
-            );
+            // window.localStorage.setItem(
+            //   "networkUrls",
+            //   JSON.stringify(store.urls),
+            // );
             emit("networkUrlupdate", { url: store.url, urls: store.urls });
           }}
         >

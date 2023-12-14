@@ -169,26 +169,26 @@ export default component$(() => {
                         Category id
                       </label>
                       <p class="break-all">{utxo.token_data!.category} </p>
-                      { utxo.token_data?.nft ? 
-                        <div class="card-actions justify-end" >
-                        <label class="text-sm font-medium text-secondary">
-                          Capability
-                        </label>
-                        <p class="break-all">
-                          {utxo.token_data!.nft?.capability}{" "}
-                        </p>
+                      {utxo.token_data?.nft ? (
+                        <div class="card-actions justify-end">
+                          <label class="text-sm font-medium text-secondary">
+                            Capability
+                          </label>
+                          <p class="break-all">
+                            {utxo.token_data!.nft?.capability}{" "}
+                          </p>
 
-                        <label class="text-sm font-medium text-secondary">
-                          Commitment
-                        </label>
-                        <p class="break-all">
-                          {utxo.token_data!.nft?.commitment}{" "}
-                        </p>
-                        
-                      </div>
-                      : <> </> }
+                          <label class="text-sm font-medium text-secondary">
+                            Commitment
+                          </label>
+                          <p class="break-all">
+                            {utxo.token_data!.nft?.commitment}{" "}
+                          </p>
+                        </div>
+                      ) : (
+                        <> </>
+                      )}
                       <div class="card-actions justify-end">
-
                         <button
                           type="button"
                           onClick$={() => {
@@ -311,6 +311,42 @@ export const SendTokenModal = component$((props: Utxo) => {
     }
   });
 
+  const build = $(() => {
+    build_p2pkh_transaction(
+      store.derivationPath,
+      store.destinationAddress,
+      store.srcAddress,
+      store.satoshiSendAmount,
+      store.category,
+      store.tokenSendAmount,
+      store.commitment,
+      store.capability,
+      store.utxos as [],
+      store.tokenRequiredUtxos,
+    )
+      .then((txBuild) => {
+        const res = JSON.parse(txBuild as string);
+        store.buildIsOk = true;
+        store.rawTx = res.rawTx as string;
+        decodeTransaction(store.rawTx as string)
+          .then((tx) => {
+            txDetails.inputs = tx.inputs;
+            txDetails.outputs = tx.outputs;
+            txDetails.txid = tx.txid;
+            createTokenDetails.value = true;
+          })
+          .catch((e) => {
+            console.log(e);
+          });
+      })
+      .catch((e) => {
+        store.buildIsOk = false;
+        errStore.build = e;
+        console.error("errStore.build:", errStore.build);
+        createTokenDetails.value = false;
+      });
+  });
+
   // const validateAddr = $(async (address: string) => {
   //   await invoke("validate_cash_address", {
   //     address,
@@ -410,41 +446,7 @@ export const SendTokenModal = component$((props: Utxo) => {
                   console.error(e);
                 });
               //Using decoders shift props.nft.commitment to address props somehow
-              const c = store.commitment;
-              const commitment = c;
-              const reqUtxos = store.tokenRequiredUtxos;
-              build_p2pkh_transaction(
-                store.derivationPath,
-                store.destinationAddress,
-                store.srcAddress,
-                store.satoshiSendAmount,
-                store.category,
-                store.tokenSendAmount,
-                commitment,
-                store.capability,
-                store.utxos as [],
-                reqUtxos,
-              )
-                .then((rawTx) => {
-                  store.buildIsOk = true;
-                  store.rawTx = rawTx as string;
-                  decodeTransaction(rawTx as string)
-                    .then((tx) => {
-                      txDetails.inputs = tx.inputs;
-                      txDetails.outputs = tx.outputs;
-                      txDetails.txid = tx.txid;
-                      createTokenDetails.value = true;
-                    })
-                    .catch((e) => {
-                      console.log(e);
-                    });
-                })
-                .catch((e) => {
-                  store.buildIsOk = false;
-                  errStore.build = e;
-                  console.error("errStore.build:", errStore.build);
-                  createTokenDetails.value = false;
-                });
+              build();
             }}
             value={store.destinationAddress}
             placeholder="address"
@@ -469,6 +471,7 @@ export const SendTokenModal = component$((props: Utxo) => {
                 onClick$={() => {
                   store.capability = undefined;
                   store.commitment = undefined;
+                  build();
                 }}
                 type="checkbox"
               ></input>
@@ -501,46 +504,7 @@ export const SendTokenModal = component$((props: Utxo) => {
                 ? store.tokenSendAmount
                 : undefined;
 
-              const c = store.commitment;
-              const commitment = c;
-              const reqUtxos = store.tokenRequiredUtxos;
-              // console.log("REQ UTXOS", store.tokenRequiredUtxos);
-              console.log("REQ UTXOS", reqUtxos);
-              console.log("Optional UTXOS", store.utxos);
-
-              build_p2pkh_transaction(
-                store.derivationPath,
-                store.destinationAddress,
-                store.srcAddress,
-                store.satoshiSendAmount,
-                store.category,
-                store.tokenSendAmount,
-
-                commitment,
-                store.capability,
-                store.utxos as [],
-                reqUtxos,
-              )
-                .then((rawTx) => {
-                  store.buildIsOk = true;
-                  store.rawTx = rawTx as string;
-                  decodeTransaction(rawTx as string)
-                    .then((tx) => {
-                      txDetails.inputs = tx.inputs;
-                      txDetails.outputs = tx.outputs;
-                      txDetails.txid = tx.txid;
-                      createTokenDetails.value = true;
-                    })
-                    .catch((e) => {
-                      console.log(e);
-                    });
-                })
-                .catch((e) => {
-                  store.buildIsOk = false;
-                  errStore.build = e;
-                  console.log("errStore.build:", errStore.build);
-                  createTokenDetails.value = false;
-                });
+              build();
             }}
             value={store.tokenSendAmount}
             placeholder="TokenAmount"
@@ -577,51 +541,8 @@ export const SendTokenModal = component$((props: Utxo) => {
                   console.log("store.amountValid", store.amountValid);
                   createTokenDetails.value =
                     store.amountValid && store.validAddr ? true : false;
-                  const c = store.commitment;
-                  const commitment = c;
-                  const reqUtxos = store.tokenRequiredUtxos;
-                  console.log("Optional UTXOS", store.utxos);
-                  console.log("REQ UTXOS", reqUtxos);
 
-                  build_p2pkh_transaction(
-                    store.derivationPath,
-                    store.destinationAddress,
-                    store.srcAddress,
-                    store.satoshiSendAmount,
-                    store.category,
-                    store.tokenSendAmount,
-                    commitment,
-                    // store.commitment,
-                    store.capability,
-                    store.utxos as [],
-                    // store.tokenRequiredUtxos,
-                    reqUtxos,
-                  )
-                    .then((rawTx) => {
-                      store.buildIsOk = true;
-                      store.rawTx = rawTx as string;
-                      decodeTransaction(rawTx as string)
-                        .then((tx) => {
-                          txDetails.inputs = tx.inputs;
-                          txDetails.outputs = tx.outputs;
-                          txDetails.txid = tx.txid;
-                          createTokenDetails.value = store.buildIsOk
-                            ? true
-                            : false;
-                        })
-                        .catch((e) => {
-                          console.error(e);
-                        });
-                    })
-                    .catch((e) => {
-                      store.amountValid = false;
-                      store.buildIsOk = false;
-                      errStore.build = e;
-                      console.log("errStore.build:", errStore.build);
-                      console.log("store.buildIsOk:", store.buildIsOk);
-                      console.error(e);
-                      createTokenDetails.value = false;
-                    });
+                  build();
                 }}
                 value={
                   !store.satoshiSendAmount ? undefined : store.satoshiSendAmount
@@ -658,43 +579,7 @@ export const SendTokenModal = component$((props: Utxo) => {
                       store.satoshiSendAmount =
                         store.availableTokenSatoshiAmount;
 
-                      console.log("check", store.commitment);
-                      console.log("check", store.capability);
-                      const c = store.commitment;
-                      const commitment = c;
-                      build_p2pkh_transaction(
-                        store.derivationPath,
-                        store.destinationAddress,
-                        store.srcAddress,
-                        store.satoshiSendAmount,
-                        store.category,
-                        store.tokenSendAmount,
-                        commitment,
-                        // store.commitment,
-                        store.capability,
-                        store.utxos as [],
-                        store.tokenRequiredUtxos,
-                      )
-                        .then((rawTx) => {
-                          store.buildIsOk = true;
-                          store.rawTx = rawTx as string;
-                          decodeTransaction(rawTx as string)
-                            .then((tx) => {
-                              txDetails.inputs = tx.inputs;
-                              txDetails.outputs = tx.outputs;
-                              txDetails.txid = tx.txid;
-                              createTokenDetails.value = true;
-                            })
-                            .catch((e) => {
-                              console.log(e);
-                            });
-                        })
-                        .catch((e) => {
-                          errStore.build = e;
-                          console.log("errStore.build:", errStore.build);
-                          createTokenDetails.value = false;
-                          store.buildIsOk = false;
-                        });
+                      build();
                     }}
                   >
                     Max Amount
@@ -722,37 +607,7 @@ export const SendTokenModal = component$((props: Utxo) => {
 
               <div
                 onClick$={() => {
-                  const c = store.commitment;
-                  const commitment = c;
-                  build_p2pkh_transaction(
-                    store.derivationPath,
-                    store.destinationAddress,
-                    store.srcAddress,
-                    store.satoshiSendAmount,
-                    store.category,
-                    store.tokenSendAmount,
-                    commitment,
-                    // store.commitment,
-                    store.capability,
-                    store.utxos as [],
-                    store.tokenRequiredUtxos,
-                  )
-                    .then((rawTx) => {
-                      store.rawTx = rawTx as string;
-                      store.buildIsOk = true;
-                      decodeTransaction(rawTx as string).then((tx) => {
-                        txDetails.inputs = tx.inputs;
-                        txDetails.txid = tx.txid;
-                        txDetails.outputs = tx.outputs;
-                        console.log("rawTransaction", store.rawTx);
-                      });
-                    })
-                    .catch((e) => {
-                      store.buildIsOk = false;
-                      errStore.build = e;
-                      console.log("errStore.build:", errStore.build);
-                      console.log(e);
-                    });
+                  build();
                   if (store.buildIsOk) {
                     const transaction = store.rawTx;
                     const networkUrl = walletData.networkUrl!.concat(":50001");
@@ -852,30 +707,30 @@ export const TxDetails = component$((tx: Transaction) => {
                           </label>
                           <span>{output.token.category}</span>
                         </div>
-                          {output.token.nft?  
+                        {output.token.nft ? (
+                          <div class="text-xs">
+                            <h1 class="text-xs text-primary"> NFT: </h1>
+                            <label class="text-xs text-secondary">
+                              {" "}
+                              Capability:{" "}
+                            </label>
+                            <span>{output.token.nft?.capability}</span>
+                            <label class="text-xs text-secondary">
+                              {" "}
+                              Commitment:{" "}
+                            </label>
 
-                        <div class="text-xs">
-                          <h1 class="text-xs text-primary"> NFT: </h1>
-                          <label class="text-xs text-secondary">
-                            {" "}
-                            Capability:{" "}
-                          </label>
-                          <span>{output.token.nft?.capability}</span>
-                          <label class="text-xs text-secondary">
-                            {" "}
-                            Commitment:{" "}
-                          </label>
-
-                          <div class="truncate">
-                            <p>
-                              {output.token.nft?.commitment !== undefined
-                                ? output.token.nft!.commitment
-                                : ""}
-                            </p>
+                            <div class="truncate">
+                              <p>
+                                {output.token.nft?.commitment !== undefined
+                                  ? output.token.nft!.commitment
+                                  : ""}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-
-                          : <></>}
+                        ) : (
+                          <></>
+                        )}
                       </div>
                     )}
                   </div>
