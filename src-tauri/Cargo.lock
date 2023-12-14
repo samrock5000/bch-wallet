@@ -120,45 +120,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4668cab20f66d8d020e1fbc0ebe47217433c1b6c8f2040faf858554e394ace6"
 
 [[package]]
-name = "app"
-version = "0.1.0"
-dependencies = [
- "aes-gcm",
- "argon2",
- "bincode",
- "bitcoin_hashes 0.11.0",
- "bitcoincash-addr",
- "bitcoinsuite-core",
- "bitvec",
- "bytes",
- "dirs",
- "electrum-client",
- "hex",
- "lazy_static",
- "num-bigint",
- "portpicker",
- "rand 0.8.5",
- "rand_chacha 0.3.1",
- "rand_core 0.6.4",
- "regex",
- "secp256k1",
- "secp256k1-abc",
- "serde",
- "serde_json",
- "sigser",
- "sled",
- "tauri",
- "tauri-build",
- "tauri-bundler",
- "tauri-plugin-localhost",
- "tauri-plugin-websocket",
- "thiserror",
- "tiny-bip39",
- "tokio",
- "url",
-]
-
-[[package]]
 name = "ar"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -488,6 +449,45 @@ checksum = "599aa35200ffff8f04c1925aa1acc92fa2e08874379ef42e210a80e527e60838"
 dependencies = [
  "serde",
  "toml 0.7.8",
+]
+
+[[package]]
+name = "cashcaster"
+version = "0.1.1"
+dependencies = [
+ "aes-gcm",
+ "argon2",
+ "bincode",
+ "bitcoin_hashes 0.11.0",
+ "bitcoincash-addr",
+ "bitcoinsuite-core",
+ "bitvec",
+ "bytes",
+ "dirs",
+ "electrum-client",
+ "hex",
+ "lazy_static",
+ "num-bigint",
+ "portpicker",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
+ "rand_core 0.6.4",
+ "regex",
+ "secp256k1",
+ "secp256k1-abc",
+ "serde",
+ "serde_json",
+ "sigser",
+ "sled",
+ "tauri",
+ "tauri-build",
+ "tauri-bundler",
+ "tauri-plugin-localhost",
+ "tauri-plugin-websocket",
+ "thiserror",
+ "tiny-bip39",
+ "tokio",
+ "url",
 ]
 
 [[package]]
