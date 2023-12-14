@@ -214,19 +214,15 @@ const validSatoshiAmount = $((amount:number)=>{
       }),
   );
 
-
   useContextProvider(TransactionDetails, TxDetailsStore);
 
   const validAddressInput = $((addr: string) => {
     validateAddr(addr)
       .then(() => {
-        // showTxDetails.value = store.amountValid && store.validAddr;
         store.validAddr = true;
-        // build();
       })
       .catch((e) => {
         store.validAddr = false;
-        // showTxDetails.value = false; //store.amountValid && store.validAddr;
         console.error("store.outgoingAmountERRRR", e, store.destinationAddr);
       });
                    store.destinationAddr == undefined
@@ -277,15 +273,6 @@ const validSatoshiAmount = $((amount:number)=>{
                 value={store.destinationAddr}
                 placeholder="address"
               ></input>
-              {/* <span */}
-              {/*   class={ */}
-              {/*     store.destinationAddr == "" */}
-              {/*       ? badgeState.empty */}
-              {/*       : !store.validAddr */}
-              {/*       ? badgeState.invalid */}
-              {/*       : badgeState.valid */}
-              {/*   } */}
-              {/* ></span> */}
             </div>
             <div>
               <div class="dropdown dropdown-hover ">
@@ -296,21 +283,15 @@ const validSatoshiAmount = $((amount:number)=>{
                     borderStateAmount.value
                   }
                   type="number"
-                  onInput$={(ev) => {
+                  onInput$={async(ev) => {
                     store.outgoingAmount = 
                     (ev.target as HTMLInputElement).value == "" ?
                     undefined :
                       parseInt(
                       (ev.target as HTMLInputElement).value,
                       10) 
-                  store.amountValid = validSatoshiAmount(store.outgoingAmount!);
-                    // console.log("OUT AMOUNT ",store.outgoingAmount)
+                  store.amountValid = await validSatoshiAmount(store.outgoingAmount!)!;
                     build();
-                    // store.amountValid = store.dustAmount! >546? true : false
-                    // console.log("store.amountValid", store.amountValid);
-                    // console.log("BUILD ERR", store.buildTxErr);
-                    // showTxDetails.value = store.amountValid && store.validAddr;
-                    // canCreateToken.value = showTxDetails.value;
                   }}
                   value={
                     !store.outgoingAmount ? undefined : store.outgoingAmount
@@ -318,15 +299,6 @@ const validSatoshiAmount = $((amount:number)=>{
                   //TODO use bch value
                   placeholder="satoshi value"
                 ></input>
-                {/* <div */}
-                {/*   class={ */}
-                {/*     store.outgoingAmount == undefined  */}
-                {/*       ? badgeState.empty */}
-                {/*       : !store.amountValid */}
-                {/*       ? badgeState.invalid */}
-                {/*       : badgeState.valid */}
-                {/*   } */}
-                {/* ></div> */}
                 <div class="text-xs text-primary">
                   {store.dustAmount ? <>Dust Minimum {store.dustAmount}</> : ""}
                 </div>
@@ -364,11 +336,6 @@ const validSatoshiAmount = $((amount:number)=>{
               <div
                 class={
                   ""
-                  // store.amountValid &&
-                  // store.validAddr &&
-                  // store.isTokenGenesisIndexAvailable
-                  // ? ""
-                  // : "hidden"
                 }
               >
                 <div class="grid justify-items-center">
@@ -394,7 +361,6 @@ const validSatoshiAmount = $((amount:number)=>{
                             type="checkbox"
                             checked={store.isTokenCreateChecked} //{canCreateToken.value}
                             onClick$={() => {
-                              // store.isTokenCreateChecked == true;
                               store.isTokenCreateChecked =
                                 store.isTokenCreateChecked == false
                                   ? true
