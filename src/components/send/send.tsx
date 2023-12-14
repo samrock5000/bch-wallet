@@ -137,10 +137,9 @@ export default component$(() => {
       store.isTokenCreateChecked ? tokenStore.tokenUtxos : [],
     )
       .then((txbuildRes) => {
-        const res = JSON.parse(txbuildRes);
+        const res = JSON.parse(txbuildRes as string);
         txStore.raw = res.rawTx;
         store.dustAmount = res.dust;
-        console.log("RAW AND DUST", res);
         store.amountValid = true;
         store.buildTxErr = "";
         showTxDetails.value = true;
