@@ -347,56 +347,6 @@ export const SendTokenModal = component$((props: Utxo) => {
       });
   });
 
-  // const validateAddr = $(async (address: string) => {
-  //   await invoke("validate_cash_address", {
-  //     address,
-  //   });
-  // });
-  // const validTokenAmount = $(
-  //   async (amount: string) => await invoke("valid_token_amount", { amount }),
-  // );
-
-  // const build_p2pkh_transaction = $(
-  //   async (
-  //     derivationPath: string,
-  //     destinationAddress: string,
-  //     sourceAddress: string,
-  //     amount: number,
-  //     category: string | undefined,
-  //     tokenAmount: string | undefined,
-  //     commitment: string | undefined,
-  //     capability: string | undefined,
-  //     utxos: [],
-  //     requiredUtxos: Utxo[] | undefined,
-  //   ) =>
-  //     await invoke("build_p2pkh_transaction", {
-  //       derivationPath,
-  //       destinationAddress,
-  //       sourceAddress,
-  //       amount,
-  //       category,
-  //       tokenAmount,
-  //       commitment,
-  //       capability,
-  //       utxos,
-  //       requiredUtxos,
-  //     }),
-  // );
-
-  // const broadcast_transaction = $(
-  //   async (transaction: string, networkUrl: string) => {
-  //     await invoke("broadcast_transaction", {
-  //       transaction,
-  //       networkUrl,
-  //     });
-  //   },
-  // );
-
-  // const decodeTransaction = $(
-  //   async (transaction: string): Promise<Transaction> =>
-  //     await invoke("decode_transaction", { transaction }),
-  // );
-
   const badgeState = {
     empty: "badge badge-neutral badge-xs opacity-50",
     invalid: "badge badge-error  gap-2 opacity-50",
@@ -578,6 +528,7 @@ export const SendTokenModal = component$((props: Utxo) => {
                     onClick$={() => {
                       store.satoshiSendAmount =
                         store.availableTokenSatoshiAmount;
+                      store.tokenSendAmount = store.availableTokenAmount.toString()
 
                       build();
                     }}
