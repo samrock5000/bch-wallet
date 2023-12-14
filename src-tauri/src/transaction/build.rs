@@ -203,10 +203,10 @@ pub fn create_tx_for_destination_output(
         } else {
             token_genesis_utxos
         };
-
+        
         let mut maybe_change = Output {
             script: src_script.clone(),
-            token: token_change,
+            token: token_change.clone(),
             ..Default::default()
         };
 
@@ -243,7 +243,7 @@ pub fn create_tx_for_destination_output(
                             let tx_size = build_transaction_p2pkh(
                                 derivation_path,
                                 &mut selection_final_candidates(&selection).unwrap(),
-                                vec![destination_output.clone()],
+                                vec![ maybe_change.clone(), destination_output.clone()],
                             )
                             .unwrap()
                             .len()
@@ -252,7 +252,7 @@ pub fn create_tx_for_destination_output(
                             build_transaction_p2pkh(
                                 derivation_path,
                                 &mut selection_final_candidates(&selection).unwrap(),
-                                vec![destination_output],
+                                vec![maybe_change, destination_output],
                             )
                         }
                     }
@@ -260,11 +260,14 @@ pub fn create_tx_for_destination_output(
                         dust_threshold: _,
                         remaining_amount,
                         change_fee: _,
-                    } => {
+                    } => { 
+                        if token_change.is_some() {
+                            return Err(WalletError::Generic { reason: "Coin Selection: no change outputs creates but token change detected".to_string() })    
+                        }
                         let tx_size = build_transaction_p2pkh(
                             derivation_path,
                             &mut selection_final_candidates(&selection).unwrap(),
-                            vec![destination_output.clone()],
+                            vec![  destination_output.clone()],
                         )
                         .unwrap()
                         .len()
