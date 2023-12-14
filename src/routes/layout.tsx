@@ -52,6 +52,7 @@ export type ContextRdy = {
   rdy: boolean;
 };
 // import { getAddrFromHd } from "~/components/utils/utils";
+// export const networkUrl = "tcp://chipnet.imaginary.cash:50001";
 // export const networkUrl = "tcp://localhost:50001";
 export const networkChain = "test";
 // export const derivationPath = "m/44'/1'/0'/0/0";
@@ -72,6 +73,7 @@ export default component$(() => {
     rdy: false,
   });
   const subscriptionHasUpdated = useSignal(false);
+  const wsClientInstanceCount = useSignal(0);
   const urlCtxStore = useStore<NetworkUrlUpdate>({
     url: "",
     urls: [""],
@@ -82,7 +84,7 @@ export default component$(() => {
     balance: 0,
     tokenUtxoBalance: 0,
     mnemonic: "",
-    networkUrl: "localhost",
+    networkUrl: "chipnet.imaginary.cash",
     network: "test",
     networkConnection: false,
     bip44Path: derivationPath,
@@ -106,7 +108,6 @@ export default component$(() => {
             // @ts-ignore
             store.tokenUtxos = utxos.filter((e) => e.token_data);
             store.balance = utxoSum(store.utxos);
-            console.log("tokenUtxos", store.tokenUtxos);
             contextSet.rdy = true;
             //TODO rm contextmenu
             // tauriWindow.getCurrent().listen(TauriEvent.WINDOW_CLOSE_REQUESTED, async () => {
@@ -123,12 +124,23 @@ export default component$(() => {
     webSocketID: 0,
   });
   useVisibleTask$(async ({ track }) => {
-    const networkUrlUpdated = track(() => store.networkUrl);
+    doesWalletExist().then(async (res) => {
+      mnemonicExist.value = res as boolean;
+    });
+
     const walletExist = track(() => mnemonicExist.value);
-    track(() => store.networkConnection);
     mnemonicExist.value = walletExist;
-    // const urls = window.localStorage.getItem("networkUrls");
-    urlCtxStore.url = networkUrlUpdated;
+
+    const isNetworkSet = (window.localStorage.getItem("networkUrl") != null) ;
+    if (!isNetworkSet) {
+      window.localStorage.setItem("networkUrl",store.networkUrl!);
+    } else {
+      store.networkUrl = window.localStorage.getItem("networkUrl")!;
+    }
+  
+    const networkUrlUpdated = track(() => store.networkUrl);
+
+    urlCtxStore.url = networkUrlUpdated!;
 
     /* const unlistenNetworkUrlUpdate = */ await listen<NetworkUrlUpdate>(
       "networkUrlupdate",
@@ -143,6 +155,7 @@ export default component$(() => {
         console.log(
           `networkUrl updates ${event.windowLabel}, payload: ${event.payload}`,
         );
+              invoke("close_splash").catch((e)=> console.error(e))
       },
     );
 
@@ -151,8 +164,8 @@ export default component$(() => {
     //   window.localStorage.setItem("networkUrl", "localhost");
     //   store.networkUrl = "localhost"; //window.localStorage.getItem("networkUrl")!;
     // }
-    console.log("store.networkUrl.concat", store.networkUrl);
-    networkPing(store.networkUrl.concat(":50001"))
+    // console.log("store.networkUrl.concat", store.networkUrl);
+    networkPing(store.networkUrl!.concat(":50001"))
       .then(() => {
         store.networkConnection = true;
       })
@@ -160,10 +173,6 @@ export default component$(() => {
         store.networkConnection = false;
         console.error("networkPing", e);
       });
-
-    doesWalletExist().then(async (res) => {
-      mnemonicExist.value = res as boolean;
-    });
 
     if (!walletExist) {
       /* const unlisten =  */ await listen<WalletInit>(
@@ -177,9 +186,16 @@ export default component$(() => {
       );
     } else {
       const setListener = async () => {
+
         const wsClient = await WebSocket.connect(
-          `ws://${store.networkUrl.concat(":50003")}`,
+          `ws://${store.networkUrl!.concat(":50003")}`,
         );
+        wsClientInstanceCount.value += 1;
+        if  (wsClientInstanceCount.value > 1) {
+          wsClient.disconnect().then(()=> {
+            console.log("WS DISCONNECTED");
+          })
+        }
         // const wsClient = await WebSocket.connect(
         // "ws://chipnet.imaginary.cash:50003",
         // );
@@ -194,9 +210,9 @@ export default component$(() => {
           params: [store.activeAddr],
           id: subscription.webSocketID,
         });
+        wsClientInstanceCount.value != 1 ? {} : 
         wsClient.send(req).catch((e) => console.error("wsClient.send", e));
         wsClient.addListener((res) => {
-          // console.log("Lisetener ready", r);
           subscription.type = res.type;
           if (subscription.type == "Text") {
             const data = JSON.parse(res.data as string);
@@ -206,16 +222,17 @@ export default component$(() => {
             if (subscription.hash != latestSubscription) {
               // updateUtxoStore(store.activeAddr, store.networkUrl)
               /* .then(() => */
-              wsClient
+                wsClient
                 .disconnect()
                 .then(() => {
                   console.log("WS DISCONNECTED", subscription.webSocketID);
+                wsClientInstanceCount.value -= 1;
                   store.networkConnection = false;
                 })
                 .then(() => {
                   updateUtxoStore(
                     store.activeAddr,
-                    store.networkUrl.concat(":50001")!,
+                    store.networkUrl!.concat(":50001")!,
                   );
                 })
                 .catch((e) => {
@@ -225,7 +242,7 @@ export default component$(() => {
                   setTimeout(() => {
                     subscriptionHasUpdated.value = true;
                     contextUpdated.value = true;
-                  }, 2000);
+                  }, 1000);
                 });
             }
           }
@@ -234,7 +251,6 @@ export default component$(() => {
           if (typeof res === "string") {
             store.networkConnection = false;
           }
-          // console.log("subscription hash", subscription.hash);
         });
       };
 
@@ -244,14 +260,14 @@ export default component$(() => {
         })
         .catch((e) => console.error(e))
         .finally(() => {
-          updateUtxoStore(store.activeAddr, store.networkUrl.concat(":50001")!)
-            // .then(() => {})
+          updateUtxoStore(store.activeAddr, store.networkUrl!.concat(":50001")!)
             .catch((e) => console.error("updateUtxoStore err", e))
             .finally(() => {
               setListener();
             });
         });
     }
+
   });
 
   useContextProvider(WalletContext, store);
@@ -273,11 +289,11 @@ export default component$(() => {
         <Header />
         <Slot />
         {/* <ManualUtxoCheck /> */}
-        {/* <Footer/> */}
       </div>
     </>
   );
 });
+
 
 /* const ManualUtxoCheck = component$(() => {
   const walletData = useContext(WalletContext);

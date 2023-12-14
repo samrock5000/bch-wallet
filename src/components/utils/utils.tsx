@@ -83,7 +83,7 @@ export type WalletData = {
   tokenUtxoBalance: number;
   activeAddr: string;
   network: string;
-  networkUrl: string;
+  networkUrl: string | null;
   networkConnection: boolean;
   mnemonic: string;
   bip44Path: string;

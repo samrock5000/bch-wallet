@@ -28,7 +28,7 @@ export default component$(() => {
 
     setTimeout(() => {
       const address = walletData.activeAddr;
-      const networkUrl = walletData.networkUrl.concat(":50001");
+      const networkUrl = walletData.networkUrl!.concat(":50001");
       invoke("address_history", { address, networkUrl })
         .then((data) => {
           store.history = JSON.parse(data as string);

@@ -2,6 +2,7 @@ import {
   component$,
   useContext,
   useContextProvider,
+  $,
   useStore,
   useVisibleTask$,
 } from "@builder.io/qwik";
@@ -17,25 +18,19 @@ export default component$(() => {
   const networkCtxSet = useContext(UrlContext);
 
   const store = useStore({
-    url: "" /* undefined as string | null | undefined */,
+    url: "chipnet.imaginary.cash", /* undefined as string | null | undefined */
+    //Currenly useless
     urls: ["localhost"],
     isValidUrl: false,
+    networkErr:"",
     chain: "",
     connection: false,
   });
 
   useVisibleTask$(({ track }) => {
-    // const storeUpdated = track(() => contextSet.rdy);
-    /*   const urlsUpdated =  */ track(() => store.urls);
-    // store.urls = JSON.parse(window.localStorage.getItem("networkUrls")!);
-    store.urls = networkCtxSet.urls;
-    // if (storeUpdated) {
-    //   // store.urls = props.urls;
-    //   // console.log("VISIBLE STORE URLS ", store.urls);
-    //   // console.log("VISIBLE URLS UPDATED", urlsUpdated);
-    // }
+    // track(() => store.urls);
+    // store.urls = networkCtxSet.urls;
   });
-  // console.log("STORE URLS ", store.urls);
 
   return (
     <>
@@ -46,22 +41,21 @@ export default component$(() => {
           }
           preventdefault:click
           onClick$={() => {
-            console.log("CMON NOw", store.url);
 
-            store.urls.push(store.url!);
-
-            window.localStorage.setItem(
-              "networkUrls",
-              JSON.stringify(store.urls),
-            );
-            // const urls = window.localStorage.getItem("networkUrls");
-            // store.urls = JSON.parse(urls!);
+            // store.urls.push(store.url!);
+            window.localStorage.setItem("networkUrl",store.url);
+            // window.localStorage.setItem(
+            //   "networkUrls",
+            //   JSON.stringify(store.urls),
+            // );
             emit("networkUrlupdate", { url: store.url, urls: store.urls });
           }}
         >
           Connect
         </button>
+      
         <input
+          autoCorrect="off" 
           placeholder="my.electrum.server"
           required={true}
           onInput$={(ev) => {
@@ -71,6 +65,7 @@ export default component$(() => {
               .then(() => {
                 networkPing(url.concat(":50001"))
                   .then(() => {
+                    store.networkErr = "";
                     store.connection = true;
                     store.isValidUrl = true;
                     console.log("CONNECTION VALID");
@@ -78,18 +73,23 @@ export default component$(() => {
                   })
                   .catch((e) => {
                     console.error(e);
+                    store.networkErr = e;
                     store.isValidUrl = false;
                     console.log("No connection with URL");
+                    store.url == "" ? store.networkErr = "" : {};
                   });
               })
               .catch((e) => {
+                store.networkErr = e;
                 store.isValidUrl = false;
                 console.error(e);
+                // store.url == "" ? store.networkErr = "" : {};
               });
           }}
           type="text"
         />
 
+        <div class="text-xs text-stone-50">{store.networkErr}</div>
         <select
           class="select select-bordered select-xs w-full max-w-xs"
           onInput$={(ev) => {

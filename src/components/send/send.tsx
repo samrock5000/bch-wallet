@@ -40,6 +40,8 @@ export default component$(() => {
     validNFT: false,
     isTokenGenesisIndexAvailable: false,
     isTokenCreateChecked: false,
+    buildTxErr: "",
+    dustAmount: "" as string | number,
   });
 
   const storeContext = useStore<WalletData>({
@@ -97,11 +99,7 @@ export default component$(() => {
       storeContext.balance = walletData.balance;
       storeContext.utxos = walletData.utxos;
       storeContext.bip44Path = walletData.bip44Path;
-      console.log("UTXOS", storeContext.utxos);
-      storeContext.networkUrl.concat(":50001");
-      // console.log("NETWORK", storeContext.networkUrl);
-      // console.log("contextSet", contextSet.rdy);
-      // console.log("SRC ADDR", storeContext.activeAddr);
+      storeContext.networkUrl!.concat(":50001");
       tokenGenesisStore.candidate = storeContext.utxos.filter(
         (e) => e.tx_pos == 0,
       )[0];
@@ -111,12 +109,7 @@ export default component$(() => {
         tokenStore.category = tokenStore.tokenUtxos[0].tx_hash!;
       }
 
-      console.log("Category", tokenGenesisStore.candidate);
       store.isTokenGenesisIndexAvailable = tokenStore.tokenUtxos?.length != 0;
-      console.log(
-        "store.isTokenGenesisIndexAvailable",
-        store.isTokenGenesisIndexAvailable,
-      );
     }
 
     track(() => txStore.broadcastResponse);
@@ -143,11 +136,15 @@ export default component$(() => {
       storeContext.utxos,
       store.isTokenCreateChecked ? tokenStore.tokenUtxos : [],
     )
-      .then((tx) => {
-        txStore.raw = tx as string;
-        console.log("rawTX,", tx);
-        // const transaction =
-        decodeTransaction(txStore.raw).then((tx) => {
+      .then((txbuildRes) => {
+        const res = JSON.parse(txbuildRes);
+        txStore.raw = res.rawTx;
+        store.dustAmount = res.dust;
+        console.log("RAW AND DUST", res);
+        store.amountValid = true;
+        store.buildTxErr = "";
+        showTxDetails.value = true;
+        decodeTransaction(txStore.raw as string).then((tx) => {
           TxDetailsStore.inputs = tx.inputs;
           TxDetailsStore.outputs = tx.outputs;
           TxDetailsStore.txid = tx.txid;
@@ -155,7 +152,9 @@ export default component$(() => {
           //@ts-ignore
         });
       })
-      .catch((error) => {
+      .catch((error: string) => {
+        store.buildTxErr = error;
+        showTxDetails.value = false;
         console.error("BUILD P2PKH", error);
       });
   });
@@ -163,7 +162,7 @@ export default component$(() => {
   const broadcast = $(async () =>
     broadcast_transaction(
       txStore.raw!,
-      storeContext.networkUrl.concat(":50001"),
+      storeContext.networkUrl!.concat(":50001"),
     )
       .then(async (resp) => {
         txStore.broadcastResponse = (await resp) as any;
@@ -185,6 +184,7 @@ export default component$(() => {
 
   const badgeState = {
     empty: "badge badge-neutral badge-xs opacity-50",
+    warning: "badge badge-warning badge-xs opacity-50",
     invalid: "badge badge-error gap-2 opacity-50",
     valid: "badge badge-success gap-2 opacity-50",
   };
@@ -192,6 +192,10 @@ export default component$(() => {
     success:
       "border-t-1 rounded-b bg-success px-4 py-3 text-teal-900 shadow-md",
     error: "alert alert-error flex ",
+  };
+  const tooltip = {
+    noCoins: "no coins available",
+    destinationParamsNotSet: "Provide destination address and amount",
   };
 
   useContextProvider(TransactionDetails, TxDetailsStore);
@@ -251,17 +255,23 @@ export default component$(() => {
                       (ev.target as HTMLInputElement).value,
                       10,
                     );
-                    //TODO use calcdust function
-                    store.amountValid =
-                      store.outgoingAmount <= walletData.balance &&
-                      store.outgoingAmount >= 546
-                        ? true
-                        : false;
-                    showTxDetails.value = store.amountValid && store.validAddr;
-                    canCreateToken.value = showTxDetails.value;
-                    console.log("canCreateToken", canCreateToken.value);
-
                     build();
+                    // console.log("store.amountValid", store.amountValid);
+                    // console.log("BUILD ERR", store.buildTxErr);
+                    // showTxDetails.value = store.amountValid && store.validAddr;
+                    // canCreateToken.value = showTxDetails.value;
+                    if (store.buildTxErr.includes("Amount")) {
+                      const dustAmount = store.buildTxErr
+                        .split(" ")[4]
+                        .split(":")[1];
+                      store.dustAmount = dustAmount;
+                      store.amountValid = false;
+                    } /* else {
+                      store.dustAmount = 546;
+         
+                    } */
+                    console.log("DUST AMOUNT", store.dustAmount);
+                    console.log("AMOUNT VALID", store.amountValid);
                   }}
                   value={
                     !store.outgoingAmount ? undefined : store.outgoingAmount
@@ -278,6 +288,9 @@ export default component$(() => {
                       : badgeState.valid
                   }
                 ></div>
+                <div class="text-xs text-primary">
+                  {store.dustAmount ? <>Dust Minimum {store.dustAmount}</> : ""}
+                </div>
                 <ul
                   // @ts-ignore
                   tabindex="0"
@@ -299,12 +312,8 @@ export default component$(() => {
                         store.amountValid && store.validAddr
                           ? build()
                           : undefined;
-                        showTxDetails.value =
-                          store.amountValid && store.validAddr;
-                        console.log(
-                          "store.amountValid && store.validAddr",
-                          store.amountValid && store.validAddr,
-                        );
+                        // showTxDetails.value =
+                        // store.amountValid && store.validAddr;
                       }}
                     >
                       MAX AMOUNT
@@ -327,10 +336,14 @@ export default component$(() => {
                   <div class="form-control">
                     <div class="m-4 mt-10 rounded-lg bg-cyan-100/10 px-3 shadow-xl hover:bg-cyan-300/30">
                       <div
-                        class={
-                          !store.isTokenGenesisIndexAvailable ? "tooltip" : ""
+                        class={"tooltip"}
+                        data-tip={
+                          !store.isTokenGenesisIndexAvailable
+                            ? tooltip.noCoins
+                            : !store.amountValid && !store.validAddr
+                            ? tooltip.destinationParamsNotSet
+                            : "token options are available"
                         }
-                        data-tip="no coins available"
                       >
                         <label class="">
                           <span class="label-text text-secondary ">
@@ -338,19 +351,15 @@ export default component$(() => {
                           </span>
 
                           <input
-                            disabled={!store.isTokenGenesisIndexAvailable}
+                            disabled={!store.amountValid && !store.validAddr}
                             type="checkbox"
                             checked={store.isTokenCreateChecked} //{canCreateToken.value}
                             onClick$={() => {
-                              store.isTokenCreateChecked == true;
+                              // store.isTokenCreateChecked == true;
                               store.isTokenCreateChecked =
                                 store.isTokenCreateChecked == false
                                   ? true
                                   : false;
-                              console.log(
-                                "store.isTokenCreateChecked",
-                                store.isTokenCreateChecked,
-                              );
                               canCreateToken.value = store.isTokenCreateChecked;
                               tokenStore.amount = canCreateToken.value
                                 ? tokenStore.amount
@@ -360,6 +369,7 @@ export default component$(() => {
                                 tokenStore.capability = undefined;
                                 tokenStore.commitment = undefined;
                                 tokenStore.tokenUtxos = [];
+                                store.isTokenCreateChecked = false;
                               } else {
                                 tokenStore.tokenUtxos = [
                                   tokenGenesisStore.candidate!,
@@ -429,12 +439,24 @@ export default component$(() => {
                           <select
                             class="select select-bordered select-xs w-full max-w-xs"
                             onInput$={(ev) => {
+                              //commitment cant be undefined if capability is set
+                              tokenStore.commitment = "";
                               //@ts-ignore
                               tokenStore.capability = (
                                 ev.target as HTMLInputElement
                               ).value;
-                              build();
-                              // console.log("tokenStore", tokenStore);
+                              // build();
+                              const commitment = tokenStore.commitment;
+                              const capability = tokenStore.capability;
+                              invoke("valid_nft", { commitment, capability })
+                                .then(() => {
+                                  store.validNFT = true;
+                                  build();
+                                })
+                                .catch((e) => {
+                                  store.validNFT = false;
+                                  console.error(e);
+                                });
                             }}
                           >
                             <option disabled selected>
@@ -444,8 +466,23 @@ export default component$(() => {
                             <option value="mutable">Mutable</option>
                             <option value="minting">Minting</option>
                           </select>
+                          <div
+                            class={
+                              // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+                              tokenStore.capability == undefined
+                                ? badgeState.empty
+                                : !store.validNFT
+                                ? badgeState.invalid
+                                : badgeState.valid
+                            }
+                          ></div>
                           <div>
                             <input
+                              disabled={
+                                tokenStore.capability == undefined
+                                  ? true
+                                  : false
+                              }
                               maxLength={40}
                               type="text"
                               required
@@ -455,9 +492,11 @@ export default component$(() => {
                                 tokenStore.commitment = (
                                   ev.target as HTMLInputElement
                                 ).value;
-                                const commitment = canCreateToken.value
-                                  ? tokenStore.commitment
-                                  : undefined;
+                                const commitment =
+                                  canCreateToken.value &&
+                                  tokenStore.capability != undefined
+                                    ? tokenStore.commitment
+                                    : undefined;
 
                                 const capability = canCreateToken.value
                                   ? tokenStore.capability
@@ -551,6 +590,9 @@ export default component$(() => {
                       .then(() => {
                         store.destinationAddr = "";
                         store.outgoingAmount = 0;
+                        tokenStore.amount = undefined;
+                        tokenStore.capability = undefined;
+                        tokenStore.commitment = undefined;
                         // showTxDetails.value = false;
                       })
                       .catch((e) => {
@@ -636,19 +678,23 @@ export const TxInfo = component$(() => {
                           </label>
                           <span>{output.token.category}</span>
                         </div>
-                        <div class="text-xs">
-                          <h1 class="text-xs text-primary"> NFT: </h1>
-                          <label class="text-xs text-secondary">
-                            {" "}
-                            Capability:{" "}
-                          </label>
-                          <span>{output.token.nft?.capability}</span>
-                          <label class="text-xs text-secondary">
-                            {" "}
-                            Commitment:{" "}
-                          </label>
-                          <span>{output.token.nft?.commitment}</span>
-                        </div>
+                        {output.token.nft ? (
+                          <div class="text-xs">
+                            <h1 class="text-xs text-primary"> NFT: </h1>
+                            <label class="text-xs text-secondary">
+                              {" "}
+                              Capability:{" "}
+                            </label>
+                            <span>{output.token.nft?.capability}</span>
+                            <label class="text-xs text-secondary">
+                              {" "}
+                              Commitment:{" "}
+                            </label>
+                            <span>{output.token.nft?.commitment}</span>
+                          </div>
+                        ) : (
+                          <></>
+                        )}
                       </div>
                     )}
                   </div>
