@@ -1,14 +1,14 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-use app::address::address_to_p2pkh;
-use app::coins::utxo::{
+use cashcaster::address::address_to_p2pkh;
+use cashcaster::coins::utxo::{
     get_db_utxo_unspent, get_utxos_for_address, serde_json_to_utxo, UnspentUtxos,
 };
-use app::keys::address::get_address;
-use app::keys::bip44::{
+use cashcaster::keys::address::get_address;
+use cashcaster::keys::bip44::{
     default_testnet_derivation, derive_hd_path_public_key, get_hd_node_from_db_seed,
 };
-use bincode::ErrorKind;
+// use bincode::ErrorKind;
 use bitcoinsuite_core::hash::{Hashed, Ripemd160, Sha256, Sha256d};
 use bitcoinsuite_core::script::{Op, Script};
 use bitcoinsuite_core::ser::{BitcoinSer, CompactUint};
@@ -26,16 +26,16 @@ use tauri::{utils::config::AppUrl, window::WindowBuilder, WindowUrl};
 use tauri::{Manager, Window};
 use url::Url;
 
-use app::encryption;
-// use app::keys::bip32::ExtendedPrivateKey;
-use app::network::electrum::{
+use cashcaster::encryption;
+// use cashcaster::keys::bip32::ExtendedPrivateKey;
+use cashcaster::network::electrum::{
     get_address_history, get_mempool, get_unspent_utxos, send_raw_transaction, subscribe,
 };
-use app::store::storage::{store_utxos, KEY_PATH};
-use app::transaction::build::{
+use cashcaster::store::storage::{store_utxos, KEY_PATH};
+use cashcaster::transaction::build::{
     build_transaction_p2pkh, create_tx_for_destination_output, RawTransactionHex, TokenOptions,
 };
-use app::{error::WalletError, network::electrum};
+use cashcaster::{error::WalletError, network::electrum};
 use bip39::{Language, Mnemonic, MnemonicType, Seed};
 use bitcoin_hashes::{ripemd160, /* sha256 */ Hash};
 use bitcoincash_addr::{Address, AddressCodec, CashAddrCodec, HashType /* Network */};
@@ -127,7 +127,7 @@ async fn get_mempool_address(address: &str, network_url: &str) -> Result<String,
 
 #[tauri::command]
 async fn unsubscribe_to_address(address: &str, network_url: &str) -> Result<bool, String> {
-    use app::network::electrum::unsubscribe;
+    use cashcaster::network::electrum::unsubscribe;
     let res = unsubscribe(address, network_url);
     match res.await {
         Ok(val) => Ok(val),
@@ -1125,21 +1125,21 @@ fn main() {
             subscribe_to_address,
             unsubscribe_to_address,
             get_mempool_address,
-            app::store::storage::store_utxos, /* db_utxos */
+            cashcaster::store::storage::store_utxos, /* db_utxos */
             update_utxo_store,
             network_unspent_balance_no_tokens,
             network_unspent_balance_include_tokens,
             network_ping,
             decode_transaction,
         ])
-        .setup(|app| {
-            let splashscreen_window = app.get_window("splash").unwrap();
-            let main_window = app.get_window("main").unwrap();
+        .setup(|cashcaster| {
+            let splashscreen_window = cashcaster.get_window("splash").unwrap();
+            let main_window = cashcaster.get_window("main").unwrap();
             _ = main_window.hide();
             _ = splashscreen_window.show();
-            // we perform the initialization code on a new task so the app doesn't freeze
+            // we perform the initialization code on a new task so the cashcaster doesn't freeze
             tauri::async_runtime::spawn(async move {
-                // initialize your app here instead of sleeping :)
+                // initialize your cashcaster here instead of sleeping :)
                 println!("Initializing...");
                 std::thread::sleep(std::time::Duration::from_secs(3));
                 // println!("Done initializing.");
@@ -1150,5 +1150,5 @@ fn main() {
             Ok(())
         })
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .expect("error while running tauri cashcasterlication");
 }

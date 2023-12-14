@@ -12,6 +12,7 @@ import {
   useOnDocument,
 } from "@builder.io/qwik";
 import { invoke } from "@tauri-apps/api/tauri";
+import { writeText, readText } from '@tauri-apps/api/clipboard';
 import { WalletContext, TokenUtxos, ContextSuccess } from "../../routes/layout";
 import {
   validateAddr,
@@ -64,6 +65,7 @@ export default component$(() => {
     tx_pos: 0,
     value: 0,
   });
+  const copyEvent = useSignal("copytext")
 
   // Debouncer task
   // useTask$(({ track }) => {
@@ -136,7 +138,14 @@ export default component$(() => {
       <div class="max-[600px]: min-[320px]:text-center">
         {" "}
         <h1 class="text-sm text-accent">Token Address </h1>
-        <p class="break-all ">{store.tokenAddress}</p>
+        <p 
+          onClick$={async()=> {
+            copyEvent.value = "copytext copied"
+            await writeText(store.tokenAddress);
+            setTimeout(()=> {copyEvent.value = "copytext"},500)
+        
+          }}
+          class={copyEvent.value + " " + "break-all"}>{store.tokenAddress}</p>
         {/* <h1 class="text-sm text-accent">Total BCH Token Value </h1> */}
         {/* {store.tokenUtxoSatoshiBalance} */}
         <br />

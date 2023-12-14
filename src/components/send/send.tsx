@@ -11,6 +11,7 @@ import {
 } from "@builder.io/qwik";
 import { invoke } from "@tauri-apps/api/tauri";
 import type { Utxo, Transaction, WalletData } from "../utils/utils";
+import { writeText, readText } from '@tauri-apps/api/clipboard';
 import {
   broadcast_transaction,
   build_p2pkh_transaction,
@@ -26,13 +27,35 @@ import {
 export const satToBch = (x: number) => x / 100_000_000;
 const TransactionDetails = createContextId<Transaction>("TxDetails");
 
+  const badgeState = {
+    empty: "indicator-item badge badge-neutral badge-xs opacity-50",
+    warning: "indicator-item badge badge-warning badge-xs opacity-50",
+    invalid: "indicator-item badge badge-error gap-2 opacity-50",
+    valid: "indicator-item badge badge-success gap-2 opacity-50",
+  };
+  const borderClassStates = {
+    empty:'border-2 border-nuetral-500 input-xs m-1 w-full max-w-xs ',
+    warning:'border-2 border-warning-500 input-xs m-1 w-full max-w-xs',
+    invalid:' border-2 border-rose-500 input-xs m-1 w-full max-w-xs',
+    valid:' border-2 border-green-500  input-xs m-1 w-full max-w-xs '
+  }
+  const broadcastNotif = {
+    success:
+      "border-t-1 rounded-b bg-success px-4 py-3 text-teal-900 shadow-md",
+    error: "alert alert-error flex ",
+  };
+  const tooltip = {
+    noCoins: "no coins available",
+    destinationParamsNotSet: "Provide destination address and amount",
+  };
 export default component$(() => {
   const showTxDetails = useSignal(false);
   const canCreateToken = useSignal(false);
-  // const includesToken = useSignal(false);
+  const borderStateAddress = useSignal(borderClassStates.empty);
+  const borderStateAmount = useSignal(borderClassStates.empty);
   const store = useStore({
-    destinationAddr: "".trim(),
-    outgoingAmount: 0,
+    destinationAddr: undefined as string | undefined,
+    outgoingAmount: undefined as number | undefined,
     validAddr: false,
     amountValid: false,
     txReady: false,
@@ -41,7 +64,7 @@ export default component$(() => {
     isTokenGenesisIndexAvailable: false,
     isTokenCreateChecked: false,
     buildTxErr: "",
-    dustAmount: "" as string | number,
+    dustAmount: 0  as number,
   });
 
   const storeContext = useStore<WalletData>({
@@ -120,13 +143,16 @@ export default component$(() => {
       cleanup(() => clearInterval(interval));
     }
   });
+const validSatoshiAmount = $((amount:number)=>{
+        return amount > store.dustAmount;
+    });
 
   const build = $(() => {
     build_p2pkh_transaction(
       storeContext.bip44Path,
-      store.destinationAddr,
+      store.destinationAddr!,
       storeContext.activeAddr,
-      store.outgoingAmount,
+      store.outgoingAmount!,
       //@ts-ignore
       tokenStore.category,
       //@ts-ignore
@@ -140,7 +166,7 @@ export default component$(() => {
         const res = JSON.parse(txbuildRes as string);
         txStore.raw = res.rawTx;
         store.dustAmount = res.dust;
-        store.amountValid = true;
+        // store.amountValid = true;
         store.buildTxErr = "";
         showTxDetails.value = true;
         decodeTransaction(txStore.raw as string).then((tx) => {
@@ -148,13 +174,21 @@ export default component$(() => {
           TxDetailsStore.outputs = tx.outputs;
           TxDetailsStore.txid = tx.txid;
 
-          //@ts-ignore
         });
       })
       .catch((error: string) => {
         store.buildTxErr = error;
+        // store.amountValid = false;
+        store.dustAmount = 0
         showTxDetails.value = false;
         console.error("BUILD P2PKH", error);
+          if (store.buildTxErr.includes("Amount")) {
+            const dustAmount = store.buildTxErr
+              .split(" ")[4]
+              .split(":")[1];
+              store.dustAmount = parseInt(dustAmount,10);
+              // store.amountValid = false;
+              }
       });
   });
 
@@ -166,7 +200,6 @@ export default component$(() => {
       .then(async (resp) => {
         txStore.broadcastResponse = (await resp) as any;
 
-        console.log("SUCCESS", await resp);
         console.log("SUCCESS", txStore.broadcastResponse);
       })
       .catch((error) => {
@@ -181,36 +214,32 @@ export default component$(() => {
       }),
   );
 
-  const badgeState = {
-    empty: "badge badge-neutral badge-xs opacity-50",
-    warning: "badge badge-warning badge-xs opacity-50",
-    invalid: "badge badge-error gap-2 opacity-50",
-    valid: "badge badge-success gap-2 opacity-50",
-  };
-  const broadcastNotif = {
-    success:
-      "border-t-1 rounded-b bg-success px-4 py-3 text-teal-900 shadow-md",
-    error: "alert alert-error flex ",
-  };
-  const tooltip = {
-    noCoins: "no coins available",
-    destinationParamsNotSet: "Provide destination address and amount",
-  };
 
   useContextProvider(TransactionDetails, TxDetailsStore);
 
   const validAddressInput = $((addr: string) => {
     validateAddr(addr)
       .then(() => {
-        showTxDetails.value = store.amountValid && store.validAddr;
+        // showTxDetails.value = store.amountValid && store.validAddr;
         store.validAddr = true;
-        build();
+        // build();
       })
       .catch((e) => {
         store.validAddr = false;
         // showTxDetails.value = false; //store.amountValid && store.validAddr;
         console.error("store.outgoingAmountERRRR", e, store.destinationAddr);
       });
+                   store.destinationAddr == undefined
+                    ? borderStateAddress.value = borderClassStates.empty
+                    : borderStateAddress.value = !store.validAddr
+                    ? borderStateAddress.value = borderClassStates.invalid
+                    : borderStateAddress.value =borderClassStates.valid
+
+                    store.outgoingAmount == undefined
+                    ? borderStateAmount.value = borderClassStates.empty
+                    : borderStateAmount.value = !store.amountValid
+                    ? borderStateAmount.value = borderClassStates.invalid
+                    : borderStateAmount.value = borderClassStates.valid
   });
   return (
     <div class="max-[600px]: min-[320px]:text-center">
@@ -220,10 +249,26 @@ export default component$(() => {
           <div class="flex w-full flex-col border-opacity-50">
             <div>
               <input
+                autoComplete={"off"}
                 type="text"
                 required
-                class="input input-bordered input-xs m-1 w-full max-w-xs"
-                onInput$={(ev) => {
+                class={
+                  "input input-bordered"+ " " +
+                    borderStateAddress.value
+                }
+                  onmouseOver$={async()=>{
+                   let text = await readText() as string;
+                     validateAddr(text).then(()=>{
+                      store.destinationAddr = text as string
+                      store.validAddr =  true
+                      validAddressInput(store.destinationAddr!);
+                    }).catch(()=>{
+                      store.validAddr = false
+                    })
+                  
+                  build();
+                  }}
+                oninput$={(ev) => {
                   store.destinationAddr = (
                     ev.target as HTMLInputElement
                   ).value.trim();
@@ -232,45 +277,40 @@ export default component$(() => {
                 value={store.destinationAddr}
                 placeholder="address"
               ></input>
-              <div
-                class={
-                  store.destinationAddr == ""
-                    ? badgeState.empty
-                    : !store.validAddr
-                    ? badgeState.invalid
-                    : badgeState.valid
-                }
-              ></div>
+              {/* <span */}
+              {/*   class={ */}
+              {/*     store.destinationAddr == "" */}
+              {/*       ? badgeState.empty */}
+              {/*       : !store.validAddr */}
+              {/*       ? badgeState.invalid */}
+              {/*       : badgeState.valid */}
+              {/*   } */}
+              {/* ></span> */}
             </div>
             <div>
               <div class="dropdown dropdown-hover ">
                 <input
-                  maxLength={16}
-                  minLength={1}
-                  class="input input-bordered input-xs  "
+                  // maxlength={16}
+                  // minlength={1}
+                  class={"input input-bordered input-xs  " + 
+                    borderStateAmount.value
+                  }
                   type="number"
                   onInput$={(ev) => {
-                    store.outgoingAmount = parseInt(
+                    store.outgoingAmount = 
+                    (ev.target as HTMLInputElement).value == "" ?
+                    undefined :
+                      parseInt(
                       (ev.target as HTMLInputElement).value,
-                      10,
-                    );
+                      10) 
+                  store.amountValid = validSatoshiAmount(store.outgoingAmount!);
+                    // console.log("OUT AMOUNT ",store.outgoingAmount)
                     build();
+                    // store.amountValid = store.dustAmount! >546? true : false
                     // console.log("store.amountValid", store.amountValid);
                     // console.log("BUILD ERR", store.buildTxErr);
                     // showTxDetails.value = store.amountValid && store.validAddr;
                     // canCreateToken.value = showTxDetails.value;
-                    if (store.buildTxErr.includes("Amount")) {
-                      const dustAmount = store.buildTxErr
-                        .split(" ")[4]
-                        .split(":")[1];
-                      store.dustAmount = dustAmount;
-                      store.amountValid = false;
-                    } /* else {
-                      store.dustAmount = 546;
-         
-                    } */
-                    console.log("DUST AMOUNT", store.dustAmount);
-                    console.log("AMOUNT VALID", store.amountValid);
                   }}
                   value={
                     !store.outgoingAmount ? undefined : store.outgoingAmount
@@ -278,15 +318,15 @@ export default component$(() => {
                   //TODO use bch value
                   placeholder="satoshi value"
                 ></input>
-                <div
-                  class={
-                    store.outgoingAmount == 0
-                      ? badgeState.empty
-                      : !store.amountValid
-                      ? badgeState.invalid
-                      : badgeState.valid
-                  }
-                ></div>
+                {/* <div */}
+                {/*   class={ */}
+                {/*     store.outgoingAmount == undefined  */}
+                {/*       ? badgeState.empty */}
+                {/*       : !store.amountValid */}
+                {/*       ? badgeState.invalid */}
+                {/*       : badgeState.valid */}
+                {/*   } */}
+                {/* ></div> */}
                 <div class="text-xs text-primary">
                   {store.dustAmount ? <>Dust Minimum {store.dustAmount}</> : ""}
                 </div>

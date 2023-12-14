@@ -11,7 +11,7 @@ pub async fn get_unspent_utxos(
     address: &str,
     network_url: &str,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    println!("ELECTRUM REQUEST UNSPENT UTXOS: \n==>{}<==\n:", address);
+    println!("ELECTRUM REQUEST UNSPENT UTXOS: \n{}\n:", address);
     let client = Client::new(network_url)?;
     let method = "blockchain.address.listunspent";
     let params = vec![
@@ -29,7 +29,7 @@ pub async fn get_utxos_balance_no_tokens(
     address: &str,
     network_url: &str,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    println!("ELECTRUM REQUEST ADDRESS BALANCE: \n==> {} <==\n", address);
+    println!("ELECTRUM REQUEST ADDRESS BALANCE: \n{}\n", address);
     let client = Client::new(network_url)?;
     let method = "blockchain.address.get_balance";
     let params = vec![Param::String(address.to_string())];
@@ -43,7 +43,7 @@ pub async fn get_utxos_balance_include_tokens(
     address: &str,
     network_url: &str,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    println!("ELECTRUM REQUEST ADDRESS BALANCE: \n==>{}<==\n:", address);
+    println!("ELECTRUM REQUEST ADDRESS BALANCE Include Tokens: \n{}\n:", address);
     let client = Client::new(network_url)?;
     let method = "blockchain.address.get_balance";
     let params = vec![
