@@ -98,8 +98,6 @@ pub fn create_tx_for_destination_output(
     utxos: UnspentUtxos,
     required_utxos: Option<UnspentUtxos>,
 ) -> Result<DustAndRawTransactionHex, WalletError> {
-    // println!("TOKEN OPTIONS{:#?}", token_options);
-    // println!("REQ TOKEN {:#?}", required_utxos);
     let fee = FeeRate::from_sat_per_vb(0.0);
     let mut w_utxos: Vec<WeightedUtxo> = Vec::new();
     let mut token_genesis_utxos: Vec<WeightedUtxo> = Vec::new();
@@ -200,10 +198,25 @@ pub fn create_tx_for_destination_output(
     } else {
         let req_utxos = if token_genesis_utxos.is_empty() {
             token_spend_utxos
+            //TODO MAKE SURE WE CAN UNWRAP HERE!!
         } else {
+            let rm_txid = token_genesis_utxos
+                .clone()
+                .first()
+                .unwrap()
+                .utxo
+                .outpoint
+                .txid;
+            let idx = w_utxos
+                .clone()
+                .iter()
+                .position(|x| x.utxo.outpoint.txid == rm_txid)
+                .unwrap();
+            w_utxos.remove(idx);
             token_genesis_utxos
         };
-        
+        println!("OPTIONAL UTXOS {:#?}", w_utxos);
+        println!("REQUIRED UTXOS {:#?}", req_utxos);
         let mut maybe_change = Output {
             script: src_script.clone(),
             token: token_change.clone(),
@@ -243,7 +256,7 @@ pub fn create_tx_for_destination_output(
                             let tx_size = build_transaction_p2pkh(
                                 derivation_path,
                                 &mut selection_final_candidates(&selection).unwrap(),
-                                vec![ maybe_change.clone(), destination_output.clone()],
+                                vec![maybe_change.clone(), destination_output.clone()],
                             )
                             .unwrap()
                             .len()
@@ -260,14 +273,14 @@ pub fn create_tx_for_destination_output(
                         dust_threshold: _,
                         remaining_amount,
                         change_fee: _,
-                    } => { 
+                    } => {
                         if token_change.is_some() {
-                            return Err(WalletError::Generic { reason: "Coin Selection: no change outputs creates but token change detected".to_string() })    
+                            return Err(WalletError::Generic { reason: "Coin Selection: no change outputs creates but token change detected".to_string() });
                         }
                         let tx_size = build_transaction_p2pkh(
                             derivation_path,
                             &mut selection_final_candidates(&selection).unwrap(),
-                            vec![  destination_output.clone()],
+                            vec![destination_output.clone()],
                         )
                         .unwrap()
                         .len()
