@@ -424,8 +424,9 @@ export const SendTokenModal = component$((props: Utxo) => {
             Available Tokens: <span>{store.availableTokenAmount}</span>
           </h2>
           {props.token_data?.nft != undefined ? (
+            <>
             <div>
-              <label>Fungible</label>
+              <label>To Fungible</label>
               <input
                 onClick$={() => {
                   store.capability = undefined;
@@ -435,6 +436,18 @@ export const SendTokenModal = component$((props: Utxo) => {
                 type="checkbox"
               ></input>
             </div>
+            <div>
+              <label>Minting</label>
+              <input
+                onClick$={() => {
+                  store.capability = "minting";
+                  // store.commitment = undefined;
+                  build();
+                }}
+                type="checkbox"
+              ></input>
+            </div>
+            </>
           ) : (
             <></>
           )}
@@ -454,6 +467,12 @@ export const SendTokenModal = component$((props: Utxo) => {
 
                   console.error(e);
                 });
+              if (store.capability == "minting") {
+                store.availableTokenAmount >=
+                parseInt(store.tokenSendAmount, 10)
+                build();
+                return;
+              } else {
               store.tokenAmountValid =
                 store.availableTokenAmount >=
                 parseInt(store.tokenSendAmount, 10)
@@ -464,6 +483,8 @@ export const SendTokenModal = component$((props: Utxo) => {
                 : undefined;
 
               build();
+
+              }
             }}
             value={store.tokenSendAmount}
             placeholder="TokenAmount"
@@ -542,7 +563,7 @@ export const SendTokenModal = component$((props: Utxo) => {
                       build();
                     }}
                   >
-                    Max Amount
+                    Max Utxo Amount
                   </button>
                 </li>
               </ul>
