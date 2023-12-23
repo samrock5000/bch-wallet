@@ -649,16 +649,23 @@ fn build_p2pkh_transaction(
     let src_script = address_to_p2pkh(source_address).unwrap();
 
     let raw_tx = if let Some(token_amount) = token_amount {
+        let mut tok_amt = 0;
         let token_amount = BigUint::parse_bytes(token_amount.as_bytes(), 10);
-        let token_amount = token_amount.unwrap().to_u64_digits();
+        println!("{:?}",token_amount);
+        if let Some(token_amount) = token_amount {
+           let token_amount = token_amount.to_u64_digits();
+
+
         if nft.is_none() && token_amount.is_empty() {
             return Err("token amount must be greater than 0 for Fungible Token Types".to_string());
         }
-        let token_amount = match token_amount.is_empty() {
-            true => 0,
-            false => u64::from_le(token_amount[0]),
+            match token_amount.is_empty() {
+            true => { tok_amt = 0},
+            false => { tok_amt = u64::from_le(token_amount[0])},
         };
-        let token_data = create_token_options(category, token_amount, nft, token_available_amount);
+
+        } 
+        let token_data = create_token_options(category, tok_amt, nft, token_available_amount);
 
         match create_tx_for_destination_output(
             derivation_path,

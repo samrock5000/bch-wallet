@@ -140,10 +140,28 @@ pub fn create_tx_for_destination_output(
     } else {
         None
     };
-
-    let token_change = if token_options.is_some() && !token_spend_utxos.is_empty() {
+    let is_minting = cashtoken.clone().is_some_and(|token| token.nft.is_some_and(|is_minting| is_minting.capability == NonFungibleTokenCapability(bitcoinsuite_core::tx::Capability::Minting) ));
+    println!("IS MINTING {}",is_minting);
+    println!("TOKEN {:?}",cashtoken);
+    let token_change = if token_options.is_some() && !token_spend_utxos.is_empty() && !is_minting {
         let total_av_token_amt = token_options.as_ref().unwrap().available_amount;
         let dest_amount = token_options.as_ref().unwrap().amount.0;
+/*
+        if cashtoken.clone().is_some_and(|token| token.nft.is_some_and(|is_minting| is_minting.capability == NonFungibleTokenCapability(bitcoinsuite_core::tx::Capability::Minting) )) {
+
+            Some(CashToken {
+                amount: CompactUint(total_av_token_amt - dest_amount),
+                category: token_options.as_ref().unwrap().category.unwrap(),
+                nft: match token_options.clone().unwrap().nft {
+                    Some(nft) => Some(NFT {
+                        capability: nft.capability,
+                        commitment: nft.commitment,
+                    }),
+                    None => None,
+                },
+            })
+        };
+        */
         if dest_amount > total_av_token_amt {
             return Err(WalletError::Generic {
                 reason: "Token: request amount > available".to_string(),
@@ -275,7 +293,7 @@ pub fn create_tx_for_destination_output(
                         change_fee: _,
                     } => {
                         if token_change.is_some() {
-                            return Err(WalletError::Generic { reason: "Coin Selection: no change outputs creates but token change detected".to_string() });
+                            return Err(WalletError::Generic { reason: "Coin Selection: no change outputs created but token change detected".to_string() });
                         }
                         let tx_size = build_transaction_p2pkh(
                             derivation_path,
