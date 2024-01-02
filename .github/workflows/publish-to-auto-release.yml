@@ -16,10 +16,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [macos-latest, ubuntu-20.04, windows-latest,fedora_latest]
+        platform: [macos-latest, ubuntu-20.04, windows-latest,fedora-latest]
         include: 
           - arch: aarch64
-            distro: fedora_latest
+            distro: fedora-latest
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
