@@ -36,7 +36,7 @@ export default component$(() => {
     <>
       <div class={`${active.value == "send" ? "" : "hidden"}`}>
         <Send />
-        <Token />
+        {/* <Token />  */}
       </div>
       <div class={`${active.value == "config" ? "" : "hidden"}`}>
         {active.value == "config" ? (

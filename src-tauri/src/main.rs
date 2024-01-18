@@ -28,6 +28,9 @@ use url::Url;
 
 use cashcaster::encryption;
 // use cashcaster::keys::bip32::ExtendedPrivateKey;
+use bip39::{Language, Mnemonic, MnemonicType, Seed};
+use bitcoin_hashes::{ripemd160, /* sha256 */ Hash};
+use bitcoincash_addr::{Address, AddressCodec, CashAddrCodec, HashType /* Network */};
 use cashcaster::network::electrum::{
     get_address_history, get_mempool, get_unspent_utxos, send_raw_transaction, subscribe,
 };
@@ -36,16 +39,13 @@ use cashcaster::transaction::build::{
     build_transaction_p2pkh, create_tx_for_destination_output, RawTransactionHex, TokenOptions,
 };
 use cashcaster::{error::WalletError, network::electrum};
-use bip39::{Language, Mnemonic, MnemonicType, Seed};
-use bitcoin_hashes::{ripemd160, /* sha256 */ Hash};
-use bitcoincash_addr::{Address, AddressCodec, CashAddrCodec, HashType /* Network */};
 use electrum_client::bitcoin::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey};
 use electrum_client::bitcoin::{base58, Amount, Denomination, Network};
 use electrum_client::bitcoin::{bip32, secp256k1};
 use secp256k1::SecretKey;
 use serde_json::{json, Value};
 use sled::{self, Error};
-// use tauri::State;
+use tauri::State;
 
 /**
  * Network functions
@@ -651,20 +651,20 @@ fn build_p2pkh_transaction(
     let raw_tx = if let Some(token_amount) = token_amount {
         let mut tok_amt = 0;
         let token_amount = BigUint::parse_bytes(token_amount.as_bytes(), 10);
-        println!("{:?}",token_amount);
+        println!("{:?}", token_amount);
         if let Some(token_amount) = token_amount {
-           let token_amount = token_amount.to_u64_digits();
+            let token_amount = token_amount.to_u64_digits();
 
-
-        if nft.is_none() && token_amount.is_empty() {
-            return Err("token amount must be greater than 0 for Fungible Token Types".to_string());
-        }
+            if nft.is_none() && token_amount.is_empty() {
+                return Err(
+                    "token amount must be greater than 0 for Fungible Token Types".to_string(),
+                );
+            }
             match token_amount.is_empty() {
-            true => { tok_amt = 0},
-            false => { tok_amt = u64::from_le(token_amount[0])},
-        };
-
-        } 
+                true => tok_amt = 0,
+                false => tok_amt = u64::from_le(token_amount[0]),
+            };
+        }
         let token_data = create_token_options(category, tok_amt, nft, token_available_amount);
 
         match create_tx_for_destination_output(
@@ -1080,25 +1080,69 @@ fn check_url(url: &str) -> Result<(), String> {
         Err(e) => Err(e.to_string()),
     }
 }
+#[tauri::command]
+fn utxo_cache(state: tauri::State<MemStore>) -> Result<Value, String> {
+    Ok(state.inner().utxos.clone())
+}
+
+#[tauri::command]
+fn address_cache(state: tauri::State<MemStore>) -> Result<Value, String> {
+    Ok(state.inner().address.clone())
+}
+#[tauri::command]
+fn wallet_exist(state: tauri::State<MemStore>) -> Result<u8, String> {
+    Ok(state.inner().wallet_exist)
+}
+
+#[derive(Debug)]
+struct MemStore {
+    utxos: Value,
+    address: Value,
+    wallet_exist: u8,
+}
 
 // #[tokio::main]
 /* async  */
 fn main() {
+    const DERIVATION_PATH: &str = "m/44'/145'/0'/0/0";
     // tauri::async_runtime::spawn(start_server());
-    match does_db_exist() {
-        true => {}
-        false => {
-            println!("Database created");
-            create_db()
+    let mut utxos = Value::default();
+    let mut address = Value::default();
+    let mut wallet_av = 0;
+
+    match does_wallet_exist() {
+        true => {
+            wallet_av = 1;
+            address = address_from_hdpath(DERIVATION_PATH, "test").unwrap().into();
+            utxos = match get_db_utxo_unspent(address.as_str().unwrap()) {
+                Ok(data) => data,
+                Err(_) => Value::default(),
+            }
         }
+        false => match does_db_exist() {
+            true => {}
+            false => {
+                println!("Database created");
+                create_db()
+            }
+        },
     }
+
     tauri::Builder::default()
-        .plugin(tauri_plugin_websocket::init())
+        .manage(MemStore {
+            utxos,
+            address,
+            wallet_exist: wallet_av,
+        })
+        .plugin(tauri_plugin_websocket::init()) // Find way to manage web socket on backend?
         .invoke_handler(tauri::generate_handler![
+            wallet_exist,
+            address_cache,
+            utxo_cache,
             check_url,
             create_db,
             does_db_exist,
-            get_db_unspent_utxos,
+            get_db_unspent_utxos, // Maybe dont expose this to client
             validate_token_cash_address,
             token_cash_address,
             get_token_utxo_data,

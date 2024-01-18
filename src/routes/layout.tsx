@@ -92,6 +92,9 @@ export default component$(() => {
     tokenUtxos: [],
   });
 
+  // const loadMemUtxoStore = $();
+  const updateSubscription = $(() => {});
+
   const updateUtxoStore = $((address: string, networkUrl: string) => {
     invoke("update_utxo_store", { address, networkUrl })
       .then(() => {
@@ -131,13 +134,13 @@ export default component$(() => {
     const walletExist = track(() => mnemonicExist.value);
     mnemonicExist.value = walletExist;
 
-    const isNetworkSet = (window.localStorage.getItem("networkUrl") != null) ;
+    const isNetworkSet = window.localStorage.getItem("networkUrl") != null;
     if (!isNetworkSet) {
-      window.localStorage.setItem("networkUrl",store.networkUrl!);
+      window.localStorage.setItem("networkUrl", store.networkUrl!);
     } else {
       store.networkUrl = window.localStorage.getItem("networkUrl")!;
     }
-  
+
     const networkUrlUpdated = track(() => store.networkUrl);
 
     urlCtxStore.url = networkUrlUpdated!;
@@ -155,7 +158,7 @@ export default component$(() => {
         console.log(
           `networkUrl updates ${event.windowLabel}, payload: ${event.payload}`,
         );
-              invoke("close_splash").catch((e)=> console.error(e))
+        // invoke("close_splash").catch((e) => console.error(e));
       },
     );
 
@@ -186,15 +189,14 @@ export default component$(() => {
       );
     } else {
       const setListener = async () => {
-
         const wsClient = await WebSocket.connect(
           `ws://${store.networkUrl!.concat(":50003")}`,
         );
         wsClientInstanceCount.value += 1;
-        if  (wsClientInstanceCount.value > 1) {
-          wsClient.disconnect().then(()=> {
+        if (wsClientInstanceCount.value > 1) {
+          wsClient.disconnect().then(() => {
             console.log("WS DISCONNECTED");
-          })
+          });
         }
         // const wsClient = await WebSocket.connect(
         // "ws://chipnet.imaginary.cash:50003",
@@ -210,8 +212,9 @@ export default component$(() => {
           params: [store.activeAddr],
           id: subscription.webSocketID,
         });
-        wsClientInstanceCount.value != 1 ? {} : 
-        wsClient.send(req).catch((e) => console.error("wsClient.send", e));
+        wsClientInstanceCount.value != 1
+          ? {}
+          : wsClient.send(req).catch((e) => console.error("wsClient.send", e));
         wsClient.addListener((res) => {
           subscription.type = res.type;
           if (subscription.type == "Text") {
@@ -220,13 +223,11 @@ export default component$(() => {
               data.result == undefined ? data.params[1] : data.result;
             window.localStorage.setItem("subscription", subscription.hash);
             if (subscription.hash != latestSubscription) {
-              // updateUtxoStore(store.activeAddr, store.networkUrl)
-              /* .then(() => */
-                wsClient
+              wsClient
                 .disconnect()
                 .then(() => {
                   console.log("WS DISCONNECTED", subscription.webSocketID);
-                wsClientInstanceCount.value -= 1;
+                  wsClientInstanceCount.value -= 1;
                   store.networkConnection = false;
                 })
                 .then(() => {
@@ -253,21 +254,24 @@ export default component$(() => {
           }
         });
       };
+      setListener();
+      // addressFromHdPath(store.bip44Path, store.network)
+      //   .then((addr: unknown) => {
+      //     store.activeAddr = addr as string;
+      //   })
+      //   .catch((e) => console.error(e))
+      // .finally(() => {
 
-      addressFromHdPath(store.bip44Path, store.network)
-        .then((addr: unknown) => {
-          store.activeAddr = addr as string;
-        })
-        .catch((e) => console.error(e))
+      /* 
+        updateUtxoStore(store.activeAddr, store.networkUrl!.concat(":50001")!)
+        .catch((e) => console.error("updateUtxoStore err", e))
         .finally(() => {
-          updateUtxoStore(store.activeAddr, store.networkUrl!.concat(":50001")!)
-            .catch((e) => console.error("updateUtxoStore err", e))
-            .finally(() => {
-              setListener();
-            });
+          setListener();
         });
-    }
+      */
 
+      // });
+    }
   });
 
   useContextProvider(WalletContext, store);
@@ -288,14 +292,13 @@ export default component$(() => {
 
         <Header />
         <Slot />
-        {/* <ManualUtxoCheck /> */}
+        <ManualUtxoCheck />
       </div>
     </>
   );
 });
 
-
-/* const ManualUtxoCheck = component$(() => {
+const ManualUtxoCheck = component$(() => {
   const walletData = useContext(WalletContext);
   const store = useStore({
     utxos: [] as Utxo[],
@@ -322,7 +325,7 @@ export default component$(() => {
   const address = walletData.activeAddr;
   return (
     <>
-      <h1>CONSOLE DEBUG</h1>
+      {/* <h1>CONSOLE DEBUG</h1>
       <button
         class="btn btn-outline btn-accent btn-xs  opacity-60"
         onClick$={() =>
@@ -348,8 +351,26 @@ export default component$(() => {
         onClick$={() => getUtxos(address, networkUrl)}
       >
         FETCH DB UTXOS
+      </button> */}
+
+      <br></br>
+      <button
+        class="btn btn-outline btn-accent btn-xs  opacity-60"
+        onClick$={() => {
+          invoke("utxo_cache", { address })
+            .then((d) => {
+              console.log("UTXOS CASHE", d);
+            })
+            .catch((e) => console.error(e));
+          invoke("address_cache", { address })
+            .then((d) => {
+              console.log("ADDRESS CACHE", d);
+            })
+            .catch((e) => console.error(e));
+        }}
+      >
+        CHECK COMMAND
       </button>
     </>
   );
 });
- */

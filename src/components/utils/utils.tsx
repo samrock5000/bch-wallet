@@ -44,14 +44,14 @@ export const build_p2pkh_transaction = $(
     }),
 );
 
-export const doesWalletExist = $(() => invoke("does_wallet_exist"));
+export const doesWalletExist = $(() => invoke("wallet_exist"));
 export const decodeTransaction = $(
   async (transaction: string): Promise<Transaction> =>
     await invoke("decode_transaction", { transaction }),
 );
 
 export const getUtxos = $((address: string) =>
-  invoke("get_db_unspent_utxos", { address }),
+  invoke("utxo_cache", { address }),
 );
 export const networkPing = $((networkUrl: string) =>
   invoke("network_ping", { networkUrl }),
