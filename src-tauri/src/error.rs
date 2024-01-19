@@ -1,10 +1,11 @@
 use bitcoinsuite_core::error::DataError;
+use serde::{de::IntoDeserializer, Deserialize, Serialize};
 // use serde_json::error::Category;
 use thiserror::Error;
 
 use crate::coins::selection;
 /// Common Wallet Errors
-#[derive(Debug, Error, PartialEq)]
+#[derive(Debug, Error, PartialEq, Serialize, Deserialize)]
 pub enum WalletError {
     #[error("CoinSelectionError")]
     CoinSelectionError { reason: String },
@@ -51,6 +52,12 @@ impl From<selection::Error> for WalletError {
         }
     }
 }
+// impl From<serde_json::Value> for WalletError {
+//     fn from(self) -> serde_json::Error {
+//         serde_json::Error::
+//         // self.to_string().into()
+//     }
+// }
 
 impl From<sled::Error> for WalletError {
     fn from(value: sled::Error) -> Self {

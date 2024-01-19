@@ -51,6 +51,7 @@ export const onGet: RequestHandler = async ({ cacheControl }) => {
 };
 export type ContextRdy = {
   rdy: boolean;
+  walletExist: boolean;
 };
 // import { getAddrFromHd } from "~/components/utils/utils";
 // export const networkUrl = "tcp://chipnet.imaginary.cash:50001";
@@ -68,11 +69,12 @@ export const utxoSum = (utxo: Utxo[]) =>
   utxo.reduce((sum, outputs) => sum + outputs.value, 0);
 
 export default component$(() => {
-  const walletExist = useSignal(false as undefined | boolean);
+  const walletExist = useSignal(false);
   const networkConnection = useSignal(false);
   const contextUpdated = useSignal(false);
   const contextSet = useStore<ContextRdy>({
     rdy: false,
+    walletExist: false,
   });
   const subscriptionHasUpdated = useSignal(false);
   const wsClientInstanceCount = useSignal(0);
@@ -86,84 +88,51 @@ export default component$(() => {
     balance: 0,
     tokenSatoshiBalance: 0,
     mnemonic: "",
-    networkUrl: "chipnet.imaginary.cash",
+    networkUrl: "",
     network: "test",
     // networkConnection: false,
     bip44Path: derivationPath,
     utxos: [],
     tokenUtxos: [],
-    walletExist: false,
+    // walletExist: false,
   });
 
-  // const loadMemUtxoStore = $();
-  const updateSubscription = $(() => {});
-
-  const updateUtxoStore = $((address: string, networkUrl: string) => {
-    invoke("update_utxo_store", { address, networkUrl })
-      .then(() => {
-        contextUpdated.value = false;
-        contextSet.rdy = false;
-        console.log("store updated");
-      })
-      .catch((e) => console.error("update utxo store", e))
-      .finally(() => {
-        getUtxos(store.address)
-          .then((utxos) => {
-            // @ts-ignore
-            store.utxos = utxos.filter((e) => !e.token_data);
-            // @ts-ignore
-            store.tokenUtxos = utxos.filter((e) => e.token_data);
-            store.balance = utxoSum(store.utxos);
-            contextSet.rdy = true;
-            //TODO rm contextmenu
-            // tauriWindow.getCurrent().listen(TauriEvent.WINDOW_CLOSE_REQUESTED, async () => {
-            //   // await confirm('Are you sure?', 'Tauri');
-            //    confirm('This action cannot be reverted. Are you sure?', { title: 'Tauri', type: 'warning' })
-            //     .then( async(res)=> res == true ? await exit(1) : console.log("STAY OPEN") )
-          })
-          .catch((e) => console.error(e));
-      });
-  });
   const subscription = useStore({
     type: "",
     hash: "",
     webSocketID: 0,
   });
   useVisibleTask$(async ({ track }) => {
-    // if (!walletExist.value) {
-    //   const unlisten = await listen<WalletInit>(
-    //     "mnemonicLoaded",
-    //     async (event) => {
-    //       walletExist.value = true;
-    //       contextUpdated.value = true;
-    //       console.log(
-    //         `new wallet created ${event.windowLabel}, payload: ${event.payload.mnemonic}`,
-    //       );
-    //     },
-    //   );
-    // }
+    doesWalletExist().then((res) => {
+      walletExist.value = res as boolean;
+      contextSet.walletExist = res as boolean;
+    });
+    if (!walletExist.value) {
+      console.log("walletExist.value", walletExist.value);
+      await listen<WalletInit>("mnemonicLoaded", async (event) => {
+        walletExist.value = true;
+        contextSet.walletExist = true;
+        console.log(
+          `new wallet created ${event.windowLabel}, payload: ${event.payload.mnemonic}`,
+        );
+      });
+    }
     walletCache()
       .then(async (cache) => {
-        store.walletExist = cache.walletExist;
-        if (!store.walletExist) {
-          return;
-        } else {
-          store.address = cache.address;
-          store.balance = cache.balance;
-          store.bip44Path = cache.bip44Path;
-          store.mnemonic = cache.mnemonic;
-          store.network = cache.network;
-          store.networkUrl = cache.networkUrl;
-          store.tokenSatoshiBalance = cache.tokenSatoshiBalance;
-          store.tokenUtxos = cache.tokenUtxos;
-          store.utxos = cache.utxos;
+        console.log("CACHE", cache);
 
-          contextSet.rdy = true;
-          console.log(store);
-        }
-      })
-      .catch((e) => console.error("walletCache", e))
-      .then(() => {
+        store.address = cache.db.address;
+        store.balance = cache.db.balance;
+        store.bip44Path = cache.db.bip44Path;
+        store.mnemonic = cache.db.mnemonic;
+        store.network = cache.db.network;
+        store.networkUrl = cache.db.networkUrl;
+        store.tokenSatoshiBalance = cache.db.tokenSatoshiBalance;
+        store.tokenUtxos = cache.db.tokenUtxos;
+        store.utxos = cache.db.utxos;
+        // store.walletExist = cache.walletExist;
+
+        contextSet.rdy = true;
         networkPing(store.networkUrl!.concat(":50001"))
           .then(() => {
             networkConnection.value = true;
@@ -172,9 +141,24 @@ export default component$(() => {
             networkConnection.value = false;
             console.error("networkPing", e);
           });
+      })
+      .catch((e) => console.error("walletCache", e))
+      .then(() => {
+        const val = "m/0";
+        invoke("update_bip44_path", { val });
+        // networkPing(store.networkUrl!.concat(":50001"))
+        //   .then(() => {
+        //     networkConnection.value = true;
+        //   })
+        //   .catch((e) => {
+        //     networkConnection.value = false;
+        //     console.error("networkPing", e);
+        //   });
       });
     track(() => walletExist.value);
     track(() => contextSet.rdy);
+    track(() => contextSet.walletExist);
+    // console.log("STORE", store);
   });
 
   useContextProvider(WalletContext, store);
@@ -232,10 +216,12 @@ const ManualUtxoCheck = component$(() => {
       .catch((e) => console.error(e));
   });
 
-  const address = walletData.activeAddr;
+  // const address = walletData.address;
+  const address = "bchtest:qq68a6ucj6my5jzdzqv6zcr4cx22zlnqsy9k4ash3q";
+  const networkUrl = "localhost:50001";
   return (
     <>
-      {/* <h1>CONSOLE DEBUG</h1>
+      <h1>CONSOLE DEBUG</h1>
       <button
         class="btn btn-outline btn-accent btn-xs  opacity-60"
         onClick$={() =>
@@ -261,7 +247,7 @@ const ManualUtxoCheck = component$(() => {
         onClick$={() => getUtxos(address, networkUrl)}
       >
         FETCH DB UTXOS
-      </button> */}
+      </button>
 
       <br></br>
       <button

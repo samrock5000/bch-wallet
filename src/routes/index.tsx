@@ -21,40 +21,29 @@ import { WalletInit } from "~/components/utils/utils";
 
 export default component$(() => {
   const contextSet = useContext(ContextSuccess);
-  const walletData = useContext(WalletContext);
 
-  const walletExist = useSignal(walletData.walletExist);
+  const walletExist = useSignal(contextSet.walletExist);
   const active = useSignal(walletExist.value ? "send" : "config");
-
+  // console.log("WTF", walletExist.value);
   // const networkSet = useContext(UrlContext);
+  useTask$(({ track }) => {
+    track(() => walletExist.value);
+  });
 
   useVisibleTask$(async ({ track }) => {
+    track(() => contextSet.rdy);
     track(() => walletExist.value);
-
-    const contextRdy = track(() => contextSet.rdy);
-    // const netwprkUrlUpdated = track(() => networkSet);
-    if (contextRdy) {
-      if (!walletExist.value) {
-        /*  const unlisten =  */ await listen<WalletInit>(
-          "mnemonicLoaded",
-          async (event) => {
-            walletExist.value = true;
-            // store.walletExist = walletExist.value;
-            // contextUpdated.value = true;
-            console.log(
-              `new wallet created ${event.windowLabel}, payload: ${event.payload.mnemonic}`,
-            );
-          },
-        );
-        return;
-      }
-    }
+    console.log("contextSet ", contextSet);
+    console.log("active.value ", active.value);
   });
   return (
     <>
       <div class={`${active.value == "send" ? "" : "hidden"}`}>
-        {!walletExist.value ? (
-          <></>
+        {walletExist.value ? (
+          <>
+            <Send />
+            <Token />
+          </>
         ) : (
           <>
             <Send />
@@ -71,7 +60,7 @@ export default component$(() => {
 
       <div class="btm-nav btm-nav-xs">
         <button
-          disabled={!walletExist.value ? true : false}
+          // disabled={!walletExist.value ? true : false}
           onClick$={() => (active.value = "send")}
           class={`text-primary ${active.value == "send" ? "active" : ""}`}
         >

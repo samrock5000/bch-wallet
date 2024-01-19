@@ -223,7 +223,13 @@ export const ImportMnemonic = component$(() => {
             saveMnemonic(store.words, undefined)
               .catch((e) => console.error(e))
               .then(async () => {
-                emit("mnemonicLoaded", { mnemonic: store.words });
+                const val = true;
+                invoke("wallet_exist_update", { val }).then(() => {
+                  console.log("WALLET IMPORTED");
+                });
+                emit("mnemonicLoaded", { mnemonic: store.words }).then((data) =>
+                  console.log("mnemonicLoaded", data),
+                );
                 // invoke("close_wallet_create").then(() => {
                 //   console.log("CLOSE WALLET CREEATE");
                 // });

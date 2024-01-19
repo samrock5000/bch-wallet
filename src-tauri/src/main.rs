@@ -18,12 +18,13 @@ use bitcoinsuite_core::tx::{
 use bytes::Bytes;
 use electrum_client::bitcoin::network::constants::ParseMagicError;
 use num_bigint::{BigUint, ToBigUint};
-use serde::Serialize;
+use serde::{Deserialize, Deserializer, Serialize};
 use std::fs::File;
 use std::future::IntoFuture;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::sync::Mutex;
 use tauri::{utils::config::AppUrl, window::WindowBuilder, WindowUrl};
 use tauri::{Manager, Window};
 use url::Url;
@@ -816,49 +817,13 @@ fn lockscript_to_cash_address(script: &str) -> Result<String, String> {
 
 #[tauri::command]
 async fn update_utxo_store(address: &str, network_url: &str) -> Result<(), String> {
-    let db_utxos = match get_db_utxo_unspent(address) {
-        Ok(utxo) => Ok(utxo),
-        Err(e) => Err(e.to_string()),
-    };
-    let network_utxos = get_unspent_utxos(address, network_url).await;
-
-    let network_utxos = match network_utxos {
-        Ok(v) => Ok(v),
-        Err(e) => Err(e.to_string()),
-    };
-    if network_utxos.is_err() {
-        return Err(network_utxos.unwrap_err().to_string());
-    }
-    if db_utxos.is_err() {
-        return Err(db_utxos.unwrap_err().to_string());
-    }
-
-    let network_res = serde_json::from_slice::<serde_json::Value>(
-        network_utxos.clone().unwrap().as_bytes().to_vec().as_ref(),
-    );
-    let network_res = serde_json_to_utxo(
-        serde_json::Value::from(network_res.expect("serde_json_to_utxo error")),
-        address,
-    );
-
-    let mut ismatch =
-        network_res.unwrap() == serde_json_to_utxo(db_utxos.unwrap(), address).unwrap();
-    let res = if ismatch {
-        Ok(())
-    } else {
-        let updated = store_utxos(address.to_string(), network_utxos.clone().unwrap());
-        match updated.is_ok() {
-            // true => Ok("utxo store update success".to_string()),
-            true => {
-                ismatch = true;
-
-                Ok(())
-            }
-
-            _ => Err("utxo store update error".to_string()),
+    match get_unspent_utxos(address, network_url).await {
+        Ok(v) => {
+            _ = store_utxos(address.to_string(), v.clone());
+            Ok(())
         }
-    };
-    res
+        Err(e) => Err(e.to_string()),
+    }
 }
 
 #[tauri::command]
@@ -910,6 +875,7 @@ fn bch_to_satoshi(value: f64) -> Result<u64, String> {
         Err(e) => Err(e.to_string()),
     }
 }
+//TODO remove can get sum from in memory db
 #[tauri::command]
 fn non_token_utxo_balance_db(address: &str) -> Result<u64, u64> {
     let utxo_from_db = get_db_utxo_unspent(&address);
@@ -926,7 +892,7 @@ fn non_token_utxo_balance_db(address: &str) -> Result<u64, u64> {
         Ok(0)
     }
 }
-
+//TODO remove can get sum from in memory db
 #[tauri::command]
 fn utxo_balance_with_tokens_db(address: &str) -> Result<u64, u64> {
     let utxo_from_db = get_db_utxo_unspent(&address);
@@ -952,6 +918,25 @@ fn get_db_unspent_utxos(address: &str) -> Result<Value, String> {
         Ok(utxos) => Ok(utxos),
         Err(e) => Err(e.to_string()),
     }
+}
+#[tauri::command]
+fn get_non_token_utxo_data(address: &str) -> Result<Vec<Value>, u64> {
+    let mut non_token_utxos = vec![];
+
+    let res = if get_db_utxo_unspent(&address).is_ok() {
+        let utxos = get_db_utxo_unspent(&address).unwrap();
+
+        for utxo in utxos.as_array().unwrap() {
+            if utxo["token_data"].is_null() {
+                non_token_utxos.push(utxo.clone());
+            };
+        }
+        Ok(non_token_utxos)
+    } else {
+        Ok(non_token_utxos)
+    };
+    // utxo_from_db
+    res
 }
 
 #[tauri::command]
@@ -1093,15 +1078,41 @@ fn address_cache(state: tauri::State<MemStore>) -> Result<Value, String> {
     Ok(state.inner().address.clone())
 }
 #[tauri::command]
-fn wallet_exist(state: tauri::State<MemStore>) -> Result<u8, String> {
-    Ok(state.inner().wallet_exist)
+fn wallet_exist(state: tauri::State<WalletExist>) -> Result<Value, String> {
+    Ok(state.db.lock().unwrap().as_bool().into())
 }
 #[tauri::command]
-fn wallet_cache(state: tauri::State<MemStore>) -> Result<Value, String> {
+fn wallet_exist_update(val: Value, state: tauri::State<WalletExist>) {
+    *state.db.lock().unwrap() = val;
+}
+#[tauri::command]
+fn wallet_cache(state: tauri::State<WalletData>) -> Result<Value, String> {
+    // println!("wallet_cache {:#?}", state);
     Ok(json!(*state))
 }
+#[tauri::command]
+fn update_bip44_path(val: Value, state: tauri::State<WalletData>) -> Result<Value, String> {
+    state.db.lock().unwrap().bip44_path = val;
+    Ok(json!(*state))
+}
+// #[tauri::command]
+// fn wallet_data_update(val: Value, state: tauri::State<WalletData>) {
+//     println!("WHATS THIS {:#?}", val);
+//     *state.db.lock().unwrap() = val
+// }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WalletExist {
+    db: Mutex<Value>,
+}
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct WalletData {
+    db: Mutex<MemStore>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct MemStore {
     master_key: Value,
@@ -1110,52 +1121,51 @@ struct MemStore {
     address: Value,
     network: Value,
     network_url: Value,
-    // network_connection: u8,
     mnemonic: Value,
     bip44_path: Value,
     utxos: Value,
     token_utxos: Value,
-    wallet_exist: Value,
 }
 
 #[tokio::main]
 async fn main() {
     const DERIVATION_PATH: &str = "m/44'/145'/0'/0/0";
-    const NETWORKURL: &str = "chipnet.imaginary.cash";
+    // const NETWORKURL: &str = "chipnet.imaginary.cash";
+    const NETWORKURL: &str = "localhost";
     // tauri::async_runtime::spawn(start_server());
     let mut master_key = Value::default();
     let mut balance = Value::default();
     let mut token_satoshi_balance = Value::default();
     let mut address = Value::default();
     let mut network = Value::default();
-    let mut network_url = Value::default();
-    let mut network_connection = 0;
+    let mut network_url: Value = NETWORKURL.into();
+    // let mut network_connection = 0;
     let mut mnemonic = Value::default();
-    let mut bip44_path = Value::default();
+    let mut bip44_path: Value = DERIVATION_PATH.into();
     let mut utxos = Value::default();
     let mut token_utxos = Value::default();
     let mut wallet_available = Value::default();
 
-    let connection_ack = network_ping(NETWORKURL.to_string())
-        .into_future()
-        .await
-        .is_ok();
-    network_connection = if connection_ack { 1 } else { 0 };
+    // let connection_ack = network_ping(NETWORKURL.to_string())
+    //     .into_future()
+    //     .await
+    //     .is_ok();
+    // network_connection = if connection_ack { 1 } else { 0 };
 
     match does_wallet_exist() {
         true => {
             wallet_available = true.into();
             address = address_from_hdpath(DERIVATION_PATH, "test").unwrap().into();
-            utxos = match get_db_utxo_unspent(address.as_str().unwrap()) {
+            utxos = match get_non_token_utxo_data(address.as_str().unwrap()) {
                 Ok(data) => {
                     let mut sum = 0;
-                    serde_json_to_utxo(data.clone(), address.as_str().unwrap())
+                    serde_json_to_utxo(data.clone().into(), address.as_str().unwrap())
                         .unwrap()
                         .non_token
                         .iter()
                         .for_each(|utxo| sum += utxo.0.output.value);
                     balance = sum.into();
-                    data
+                    data.into()
                 }
                 Err(_) => Value::default(),
             };
@@ -1172,34 +1182,57 @@ async fn main() {
                     data.into()
                 }
                 Err(_) => Value::default(),
+            };
+        }
+        false => {
+            wallet_available = false.into();
+            match does_db_exist() {
+                true => {}
+                false => {
+                    // wallet_available = false.into();
+                    println!("Database created");
+                    create_db()
+                }
             }
         }
-        false => match does_db_exist() {
-            true => {}
-            false => {
-                println!("Database created");
-                create_db()
-            }
-        },
     }
-
+    // println!("TOKEN UTXOS {:#?} {:#?}", utxos, token_utxos);
+    let mem_store = MemStore {
+        address,
+        balance,
+        bip44_path,
+        master_key,
+        mnemonic,
+        network,
+        network_url,
+        token_satoshi_balance,
+        token_utxos,
+        utxos,
+    };
     tauri::Builder::default()
-        .manage(MemStore {
-            master_key,
-            balance,
-            token_satoshi_balance,
-            address,
-            network: "test".into(),
-            network_url: NETWORKURL.into(),
-            // network_connection,
-            mnemonic,
-            bip44_path: DERIVATION_PATH.into(),
-            utxos,
-            token_utxos,
-            wallet_exist: wallet_available,
+        .manage(WalletData {
+            db: Mutex::from(mem_store),
+        })
+        // .manage(MemStore {
+        //     master_key,
+        //     balance,
+        //     token_satoshi_balance,
+        //     address,
+        //     network: "test".into(),
+        //     network_url: NETWORKURL.into(),
+        //     mnemonic,
+        //     bip44_path: DERIVATION_PATH.into(),
+        //     utxos,
+        //     token_utxos,
+        // })
+        .manage(WalletExist {
+            db: wallet_available.into(),
         })
         .plugin(tauri_plugin_websocket::init()) // Find way to manage web socket on backend?
         .invoke_handler(tauri::generate_handler![
+            // wallet_data_update,
+            update_bip44_path,
+            wallet_exist_update,
             wallet_cache,
             wallet_exist,
             address_cache,

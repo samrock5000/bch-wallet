@@ -11,6 +11,7 @@ use bitcoinsuite_core::{
     },
 };
 use bytes::Bytes;
+use serde::Serialize;
 use serde_json::Value;
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

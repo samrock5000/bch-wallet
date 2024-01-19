@@ -43,13 +43,16 @@ export const build_p2pkh_transaction = $(
       requiredUtxos,
     }),
 );
+export type MemStore = {
+  db: WalletData;
+};
 
 export const doesWalletExist = $(() => invoke("wallet_exist"));
 export const decodeTransaction = $(
   async (transaction: string): Promise<Transaction> =>
     await invoke("decode_transaction", { transaction }),
 );
-export const walletCache = $((): Promise<WalletData> => invoke("wallet_cache"));
+export const walletCache = $((): Promise<MemStore> => invoke("wallet_cache"));
 export const getUtxos = $((address: string) =>
   invoke("utxo_cache", { address }),
 );
@@ -89,7 +92,7 @@ export type WalletData = {
   bip44Path: string;
   utxos: Utxo[];
   tokenUtxos: Utxo[];
-  walletExist: boolean;
+  // walletExist: boolean;
 };
 
 /* export type TokenUtxo {
