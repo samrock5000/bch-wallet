@@ -30,6 +30,7 @@ use tauri::{Manager, Window};
 use url::Url;
 
 use cashcaster::encryption;
+use cashcaster::store::storage::{get_store_config, store_config};
 // use cashcaster::keys::bip32::ExtendedPrivateKey;
 use bip39::{Language, Mnemonic, MnemonicType, Seed};
 use bitcoin_hashes::{ripemd160, /* sha256 */ Hash};
@@ -50,6 +51,32 @@ use secp256k1::SecretKey;
 use serde_json::{json, Value};
 use sled::{self, Error};
 use tauri::State;
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WalletExist {
+    db: Mutex<Value>,
+}
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WalletData {
+    db: Mutex<MemStore>,
+}
+
+#[tauri::command]
+fn save_config(address: String, wallet_conf: Value) -> Result<(), String> {
+    match store_config(address, wallet_conf) {
+        Ok(_) => Ok(()),
+        Err(er) => Err(er.to_string()),
+    }
+}
+#[tauri::command]
+fn load_config(address: String) -> Result<Value, String> {
+    match get_store_config(address) {
+        Ok(wallet_data) => Ok(wallet_data),
+        Err(er) => Err(er.to_string()),
+    }
+}
 
 /**
  * Network functions
@@ -922,10 +949,10 @@ fn get_db_unspent_utxos(address: &str) -> Result<Value, String> {
 #[tauri::command]
 fn get_non_token_utxo_data(address: &str) -> Result<Vec<Value>, u64> {
     let mut non_token_utxos = vec![];
-
     let res = if get_db_utxo_unspent(&address).is_ok() {
-        let utxos = get_db_utxo_unspent(&address).unwrap();
+        println!("WWHATS THIS {:#?}", get_db_utxo_unspent(&address).unwrap());
 
+        let utxos = get_db_utxo_unspent(&address).unwrap();
         for utxo in utxos.as_array().unwrap() {
             if utxo["token_data"].is_null() {
                 non_token_utxos.push(utxo.clone());
@@ -1091,26 +1118,20 @@ fn wallet_cache(state: tauri::State<WalletData>) -> Result<Value, String> {
     Ok(json!(*state))
 }
 #[tauri::command]
-fn update_bip44_path(val: Value, state: tauri::State<WalletData>) -> Result<Value, String> {
+fn update_bip44_path(val: Value, state: tauri::State<WalletData>) {
     state.db.lock().unwrap().bip44_path = val;
-    Ok(json!(*state))
+    // Ok(json!(*state))
+}
+#[tauri::command]
+fn update_network_url(network_url: Value, state: tauri::State<WalletData>) {
+    state.db.lock().unwrap().network_url = network_url;
+    // Ok(json!(*state))
 }
 // #[tauri::command]
 // fn wallet_data_update(val: Value, state: tauri::State<WalletData>) {
 //     println!("WHATS THIS {:#?}", val);
 //     *state.db.lock().unwrap() = val
 // }
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct WalletExist {
-    db: Mutex<Value>,
-}
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct WalletData {
-    db: Mutex<MemStore>,
-}
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -1231,6 +1252,9 @@ async fn main() {
         .plugin(tauri_plugin_websocket::init()) // Find way to manage web socket on backend?
         .invoke_handler(tauri::generate_handler![
             // wallet_data_update,
+            save_config,
+            load_config,
+            update_network_url,
             update_bip44_path,
             wallet_exist_update,
             wallet_cache,

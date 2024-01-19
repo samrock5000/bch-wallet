@@ -8,7 +8,7 @@ import {
 } from "@builder.io/qwik";
 import { invoke } from "@tauri-apps/api";
 import { ContextSuccess, UrlContext, WalletContext } from "~/routes/layout";
-import { type NetworkUrlUpdate, networkPing } from "../utils/utils";
+import { type NetworkUrlUpdate, networkPing, updateNeworkUrl } from "../utils/utils";
 import { emit } from "@tauri-apps/api/event";
 //TODO create network chain select
 
@@ -43,12 +43,12 @@ export default component$(() => {
           onClick$={() => {
 
             // store.urls.push(store.url!);
-            window.localStorage.setItem("networkUrl",store.url);
+            // window.localStorage.setItem("networkUrl",store.url);
             // window.localStorage.setItem(
             //   "networkUrls",
             //   JSON.stringify(store.urls),
             // );
-            emit("networkUrlupdate", { url: store.url, urls: store.urls });
+            // emit("networkUrlupdate", { url: store.url, urls: store.urls });
           }}
         >
           Connect
@@ -70,6 +70,11 @@ export default component$(() => {
                     store.isValidUrl = true;
                     console.log("CONNECTION VALID");
                     console.log("VALID URL");
+                    updateNeworkUrl(store.url).then(()=>{
+                      console.log("Network url updated")
+                    window.localStorage.setItem("networkUrl",store.url);
+                    }).catch((e)=> console.error(e))
+                    
                   })
                   .catch((e) => {
                     console.error(e);

@@ -6,6 +6,9 @@ export const validateAddr = $(async (address: string) => {
     address,
   });
 });
+export const updateNeworkUrl = $((networkUrl: string) => {
+  invoke("update_network_url", { networkUrl });
+});
 export const validTokenAmount = $(
   async (amount: string) => await invoke("valid_token_amount", { amount }),
 );
@@ -46,12 +49,22 @@ export const build_p2pkh_transaction = $(
 export type MemStore = {
   db: WalletData;
 };
+export type WalletConfig = {
+  network: string;
+  networkUrl: string;
+};
 
 export const doesWalletExist = $(() => invoke("wallet_exist"));
 export const decodeTransaction = $(
   async (transaction: string): Promise<Transaction> =>
     await invoke("decode_transaction", { transaction }),
 );
+export const loadConfig = $((address: string) => {
+  invoke("get_store_config", { address });
+});
+export const saveConfig = $((address: string, walletConf: WalletConfig) => {
+  invoke("save_config", { address, walletConf });
+});
 export const walletCache = $((): Promise<MemStore> => invoke("wallet_cache"));
 export const getUtxos = $((address: string) =>
   invoke("utxo_cache", { address }),

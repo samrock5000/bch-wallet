@@ -20,7 +20,7 @@ import {
 import { invoke } from "@tauri-apps/api/tauri";
 // import { window as tauriWindow } from "@tauri-apps/api";
 // import { exists, BaseDirectory } from "@tauri-apps/api/fs";
-// import { appWindow } from "@tauri-apps/api/window";
+import { appWindow } from "@tauri-apps/api/window";
 import { listen /* TauriEvent*/ } from "@tauri-apps/api/event";
 // import { confirm } from "@tauri-apps/api/dialog";
 import { type RequestHandler } from "@builder.io/qwik-city";
@@ -37,6 +37,9 @@ import {
   type WalletData,
   type NetworkUrlUpdate,
   walletCache,
+  saveConfig,
+  WalletConfig,
+  loadConfig,
 } from "~/components/utils/utils";
 
 export const onGet: RequestHandler = async ({ cacheControl }) => {
@@ -131,7 +134,9 @@ export default component$(() => {
         store.tokenUtxos = cache.db.tokenUtxos;
         store.utxos = cache.db.utxos;
         // store.walletExist = cache.walletExist;
-
+        loadConfig(store.address).then((conf) => {
+          console.log("COINFIG", conf);
+        });
         contextSet.rdy = true;
         networkPing(store.networkUrl!.concat(":50001"))
           .then(() => {
@@ -155,6 +160,25 @@ export default component$(() => {
         //     console.error("networkPing", e);
         //   });
       });
+    const unlisten = await appWindow.onCloseRequested(async (event) => {
+      const confirmed = confirm("Are you sure?");
+      if (!confirmed) {
+        // user did not confirm closing the window; let's prevent it
+        event.preventDefault();
+      } else {
+        const address = store.address;
+        const walletState: WalletConfig = {
+          network: store.network,
+          networkUrl: store.networkUrl as string,
+        };
+        saveConfig(address, walletState)
+          .then(() => {
+            console.log("CLOSING APP SAVE CONFIG");
+          })
+          .catch((e) => console.error(e));
+      }
+      unlisten();
+    });
     track(() => walletExist.value);
     track(() => contextSet.rdy);
     track(() => contextSet.walletExist);
@@ -218,7 +242,7 @@ const ManualUtxoCheck = component$(() => {
 
   // const address = walletData.address;
   const address = "bchtest:qq68a6ucj6my5jzdzqv6zcr4cx22zlnqsy9k4ash3q";
-  const networkUrl = "localhost:50001";
+  const networkUrl = "chipnet.imaginary.cash:50001";
   return (
     <>
       <h1>CONSOLE DEBUG</h1>
