@@ -49,7 +49,7 @@ export const decodeTransaction = $(
   async (transaction: string): Promise<Transaction> =>
     await invoke("decode_transaction", { transaction }),
 );
-
+export const walletCache = $((): Promise<WalletData> => invoke("wallet_cache"));
 export const getUtxos = $((address: string) =>
   invoke("utxo_cache", { address }),
 );
@@ -80,15 +80,16 @@ export type KeySetUp = {
 export type WalletData = {
   masterKey: string;
   balance: number;
-  tokenUtxoBalance: number;
-  activeAddr: string;
+  tokenSatoshiBalance: number;
+  address: string;
   network: string;
   networkUrl: string | null;
-  networkConnection: boolean;
+  // networkConnection: boolean;
   mnemonic: string;
   bip44Path: string;
   utxos: Utxo[];
   tokenUtxos: Utxo[];
+  walletExist: boolean;
 };
 
 /* export type TokenUtxo {

@@ -15,42 +15,63 @@ import Token from "~/components/tokens/tokens";
 // import History from "~/components/history/history";
 import Mnemonic from "~/components/mnemonic/mnemonic";
 import NetworkSelect from "~/components/network/network";
-import { ContextSuccess, UrlContext } from "./layout";
-import { NetworkUrlUpdate } from "~/components/utils/utils";
+import { ContextSuccess, UrlContext, WalletContext } from "./layout";
+import { listen } from "@tauri-apps/api/event";
+import { WalletInit } from "~/components/utils/utils";
 
 export default component$(() => {
-  // const store = useStore<NetworkUrlUpdate>({
-  // url: undefined,
-  // urls: undefined,
-  // });
-  // const networkCtxSet = useContext(UrlContext);
-  const active = useSignal("send");
-  // const contextSet = useContext(ContextSuccess);
+  const contextSet = useContext(ContextSuccess);
+  const walletData = useContext(WalletContext);
+
+  const walletExist = useSignal(walletData.walletExist);
+  const active = useSignal(walletExist.value ? "send" : "config");
+
   // const networkSet = useContext(UrlContext);
 
-  useVisibleTask$(({ track }) => {
-    // const storeUpdated = track(() => contextSet.rdy);
+  useVisibleTask$(async ({ track }) => {
+    track(() => walletExist.value);
+
+    const contextRdy = track(() => contextSet.rdy);
     // const netwprkUrlUpdated = track(() => networkSet);
+    if (contextRdy) {
+      if (!walletExist.value) {
+        /*  const unlisten =  */ await listen<WalletInit>(
+          "mnemonicLoaded",
+          async (event) => {
+            walletExist.value = true;
+            // store.walletExist = walletExist.value;
+            // contextUpdated.value = true;
+            console.log(
+              `new wallet created ${event.windowLabel}, payload: ${event.payload.mnemonic}`,
+            );
+          },
+        );
+        return;
+      }
+    }
   });
   return (
     <>
       <div class={`${active.value == "send" ? "" : "hidden"}`}>
-        <Send />
-        {/* <Token />  */}
+        {!walletExist.value ? (
+          <></>
+        ) : (
+          <>
+            <Send />
+            <Token />
+          </>
+        )}
       </div>
       <div class={`${active.value == "config" ? "" : "hidden"}`}>
-        {active.value == "config" ? (
-          <>
-            <NetworkSelect />
-            <Mnemonic />
-          </>
-        ) : (
-          <></>
-        )}
+        <>
+          <NetworkSelect />
+          <Mnemonic />
+        </>
       </div>
 
       <div class="btm-nav btm-nav-xs">
         <button
+          disabled={!walletExist.value ? true : false}
           onClick$={() => (active.value = "send")}
           class={`text-primary ${active.value == "send" ? "active" : ""}`}
         >

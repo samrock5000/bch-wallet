@@ -11,7 +11,7 @@ import {
 } from "@builder.io/qwik";
 import { invoke } from "@tauri-apps/api/tauri";
 import type { Utxo, Transaction, WalletData } from "../utils/utils";
-import { writeText, readText } from '@tauri-apps/api/clipboard';
+import { writeText, readText } from "@tauri-apps/api/clipboard";
 import {
   broadcast_transaction,
   build_p2pkh_transaction,
@@ -27,27 +27,26 @@ import {
 export const satToBch = (x: number) => x / 100_000_000;
 const TransactionDetails = createContextId<Transaction>("TxDetails");
 
-  const badgeState = {
-    empty: "indicator-item badge badge-neutral badge-xs opacity-50",
-    warning: "indicator-item badge badge-warning badge-xs opacity-50",
-    invalid: "indicator-item badge badge-error gap-2 opacity-50",
-    valid: "indicator-item badge badge-success gap-2 opacity-50",
-  };
-  const borderClassStates = {
-    empty:'border-2 border-nuetral-500 input-xs m-1 w-full max-w-xs ',
-    warning:'border-2 border-warning-500 input-xs m-1 w-full max-w-xs',
-    invalid:' border-2 border-rose-500 input-xs m-1 w-full max-w-xs',
-    valid:' border-2 border-green-500  input-xs m-1 w-full max-w-xs '
-  }
-  const broadcastNotif = {
-    success:
-      "border-t-1 rounded-b bg-success px-4 py-3 text-teal-900 shadow-md",
-    error: "alert alert-error flex ",
-  };
-  const tooltip = {
-    noCoins: "no coins available",
-    destinationParamsNotSet: "Provide destination address and amount",
-  };
+const badgeState = {
+  empty: "indicator-item badge badge-neutral badge-xs opacity-50",
+  warning: "indicator-item badge badge-warning badge-xs opacity-50",
+  invalid: "indicator-item badge badge-error gap-2 opacity-50",
+  valid: "indicator-item badge badge-success gap-2 opacity-50",
+};
+const borderClassStates = {
+  empty: "border-2 border-nuetral-500 input-xs m-1 w-full max-w-xs ",
+  warning: "border-2 border-warning-500 input-xs m-1 w-full max-w-xs",
+  invalid: " border-2 border-rose-500 input-xs m-1 w-full max-w-xs",
+  valid: " border-2 border-green-500  input-xs m-1 w-full max-w-xs ",
+};
+const broadcastNotif = {
+  success: "border-t-1 rounded-b bg-success px-4 py-3 text-teal-900 shadow-md",
+  error: "alert alert-error flex ",
+};
+const tooltip = {
+  noCoins: "no coins available",
+  destinationParamsNotSet: "Provide destination address and amount",
+};
 export default component$(() => {
   const showTxDetails = useSignal(false);
   const canCreateToken = useSignal(false);
@@ -64,21 +63,22 @@ export default component$(() => {
     isTokenGenesisIndexAvailable: false,
     isTokenCreateChecked: false,
     buildTxErr: "",
-    dustAmount: 0  as number,
+    dustAmount: 0 as number,
   });
 
   const storeContext = useStore<WalletData>({
     masterKey: "",
-    activeAddr: "",
+    address: "",
     balance: 0,
     mnemonic: "",
     networkUrl: "",
     network: "",
-    networkConnection: false,
+    // networkConnection: false,
     bip44Path: derivationPath,
-    tokenUtxoBalance: 0,
+    tokenSatoshiBalance: 0,
     utxos: [],
     tokenUtxos: [],
+    walletExist: false,
   });
   const TxDetailsStore = useStore<Transaction>({
     inputs: [],
@@ -115,9 +115,13 @@ export default component$(() => {
   useVisibleTask$(({ track, cleanup }) => {
     const storeUpdated = track(() => contextSet.rdy);
     // const utxoloaded = setInterval(() => {
+
     if (storeUpdated) {
-      storeContext.activeAddr = walletData.activeAddr;
-      storeContext.networkConnection = walletData.networkConnection;
+      console.log("walletData", walletData);
+      console.log("contextST", contextSet.rdy);
+      console.log("storeUpdated", storeUpdated);
+      storeContext.address = walletData.address;
+      // storeContext.networkConnection = walletData.networkConnection;
       storeContext.networkUrl = walletData.networkUrl;
       storeContext.balance = walletData.balance;
       storeContext.utxos = walletData.utxos;
@@ -143,15 +147,15 @@ export default component$(() => {
       cleanup(() => clearInterval(interval));
     }
   });
-const validSatoshiAmount = $((amount:number)=>{
-        return amount > store.dustAmount;
-    });
+  const validSatoshiAmount = $((amount: number) => {
+    return amount > store.dustAmount;
+  });
 
   const build = $(() => {
     build_p2pkh_transaction(
       storeContext.bip44Path,
       store.destinationAddr!,
-      storeContext.activeAddr,
+      storeContext.address,
       store.outgoingAmount!,
       //@ts-ignore
       tokenStore.category,
@@ -173,22 +177,19 @@ const validSatoshiAmount = $((amount:number)=>{
           TxDetailsStore.inputs = tx.inputs;
           TxDetailsStore.outputs = tx.outputs;
           TxDetailsStore.txid = tx.txid;
-
         });
       })
       .catch((error: string) => {
         store.buildTxErr = error;
         // store.amountValid = false;
-        store.dustAmount = 0
+        store.dustAmount = 0;
         showTxDetails.value = false;
         console.error("BUILD P2PKH", error);
-          if (store.buildTxErr.includes("Amount")) {
-            const dustAmount = store.buildTxErr
-              .split(" ")[4]
-              .split(":")[1];
-              store.dustAmount = parseInt(dustAmount,10);
-              // store.amountValid = false;
-              }
+        if (store.buildTxErr.includes("Amount")) {
+          const dustAmount = store.buildTxErr.split(" ")[4].split(":")[1];
+          store.dustAmount = parseInt(dustAmount, 10);
+          // store.amountValid = false;
+        }
       });
   });
 
@@ -225,17 +226,17 @@ const validSatoshiAmount = $((amount:number)=>{
         store.validAddr = false;
         console.error("store.outgoingAmountERRRR", e, store.destinationAddr);
       });
-                   store.destinationAddr == undefined
-                    ? borderStateAddress.value = borderClassStates.empty
-                    : borderStateAddress.value = !store.validAddr
-                    ? borderStateAddress.value = borderClassStates.invalid
-                    : borderStateAddress.value =borderClassStates.valid
+    store.destinationAddr == undefined
+      ? (borderStateAddress.value = borderClassStates.empty)
+      : (borderStateAddress.value = !store.validAddr
+          ? (borderStateAddress.value = borderClassStates.invalid)
+          : (borderStateAddress.value = borderClassStates.valid));
 
-                    store.outgoingAmount == undefined
-                    ? borderStateAmount.value = borderClassStates.empty
-                    : borderStateAmount.value = !store.amountValid
-                    ? borderStateAmount.value = borderClassStates.invalid
-                    : borderStateAmount.value = borderClassStates.valid
+    store.outgoingAmount == undefined
+      ? (borderStateAmount.value = borderClassStates.empty)
+      : (borderStateAmount.value = !store.amountValid
+          ? (borderStateAmount.value = borderClassStates.invalid)
+          : (borderStateAmount.value = borderClassStates.valid));
   });
   return (
     <div class="max-[600px]: min-[320px]:text-center">
@@ -248,22 +249,21 @@ const validSatoshiAmount = $((amount:number)=>{
                 autoComplete={"off"}
                 type="text"
                 required
-                class={
-                  "input input-bordered"+ " " +
-                    borderStateAddress.value
-                }
-                  onmouseOver$={async()=>{
-                   let text = await readText() as string;
-                     validateAddr(text).then(()=>{
-                      store.destinationAddr = text as string
-                      store.validAddr =  true
+                class={"input input-bordered" + " " + borderStateAddress.value}
+                onmouseOver$={async () => {
+                  let text = (await readText()) as string;
+                  validateAddr(text)
+                    .then(() => {
+                      store.destinationAddr = text as string;
+                      store.validAddr = true;
                       validAddressInput(store.destinationAddr!);
-                    }).catch(()=>{
-                      store.validAddr = false
                     })
-                  
+                    .catch(() => {
+                      store.validAddr = false;
+                    });
+
                   build();
-                  }}
+                }}
                 oninput$={(ev) => {
                   store.destinationAddr = (
                     ev.target as HTMLInputElement
@@ -279,18 +279,18 @@ const validSatoshiAmount = $((amount:number)=>{
                 <input
                   // maxlength={16}
                   // minlength={1}
-                  class={"input input-bordered input-xs  " + 
-                    borderStateAmount.value
+                  class={
+                    "input input-bordered input-xs  " + borderStateAmount.value
                   }
                   type="number"
-                  onInput$={async(ev) => {
-                    store.outgoingAmount = 
-                    (ev.target as HTMLInputElement).value == "" ?
-                    undefined :
-                      parseInt(
-                      (ev.target as HTMLInputElement).value,
-                      10) 
-                  store.amountValid = await validSatoshiAmount(store.outgoingAmount!)!;
+                  onInput$={async (ev) => {
+                    store.outgoingAmount =
+                      (ev.target as HTMLInputElement).value == ""
+                        ? undefined
+                        : parseInt((ev.target as HTMLInputElement).value, 10);
+                    store.amountValid = await validSatoshiAmount(
+                      store.outgoingAmount!,
+                    )!;
                     build();
                   }}
                   value={
@@ -333,11 +333,7 @@ const validSatoshiAmount = $((amount:number)=>{
                 </ul>
               </div>
               <br />
-              <div
-                class={
-                  ""
-                }
-              >
+              <div class={""}>
                 <div class="grid justify-items-center">
                   <div class="form-control">
                     <div class="m-4 mt-10 rounded-lg bg-cyan-100/10 px-3 shadow-xl hover:bg-cyan-300/30">

@@ -12,7 +12,7 @@ import {
   useOnDocument,
 } from "@builder.io/qwik";
 import { invoke } from "@tauri-apps/api/tauri";
-import { writeText, readText } from '@tauri-apps/api/clipboard';
+import { writeText, readText } from "@tauri-apps/api/clipboard";
 import { WalletContext, TokenUtxos, ContextSuccess } from "../../routes/layout";
 import {
   validateAddr,
@@ -65,7 +65,7 @@ export default component$(() => {
     tx_pos: 0,
     value: 0,
   });
-  const copyEvent = useSignal("copytext")
+  const copyEvent = useSignal("copytext");
 
   // Debouncer task
   // useTask$(({ track }) => {
@@ -82,21 +82,22 @@ export default component$(() => {
   const walletData = useContext(WalletContext);
   const contextSet = useContext(ContextSuccess);
   useVisibleTask$(({ track }) => {
-    // const utxoloaded = setInterval(() => {
-    store.utxos = walletData.utxos;
-    store.tokensUtxos = walletData.tokenUtxos;
-    store.derivationPath = walletData.bip44Path;
-    store.tokenUtxoSatoshiBalance = walletData.tokenUtxoBalance;
     const storeUpdated = track(() => contextSet.rdy);
     if (storeUpdated) {
-      const address = walletData.activeAddr;
-      invoke("token_cash_address", { address })
-        .then((addr) => {
-          store.tokenAddress = addr as string;
-        })
-        .catch((e) => {
-          console.error(e);
-        });
+      store.utxos = walletData.utxos;
+      store.tokensUtxos = walletData.tokenUtxos;
+      store.derivationPath = walletData.bip44Path;
+      store.tokensUtxos = walletData.tokenUtxos;
+      store.tokenUtxoSatoshiBalance = walletData.tokenSatoshiBalance;
+      console.log("TOKEN PAGE", store);
+      const address = walletData.address;
+      // invoke("token_cash_address", { address })
+      //   .then((addr) => {
+      //     store.tokenAddress = addr as string;
+      //   })
+      //   .catch((e) => {
+      //     console.error(e);
+      //   });
     }
     /*
       if (contextSet.rdy) {
@@ -138,14 +139,18 @@ export default component$(() => {
       <div class="max-[600px]: min-[320px]:text-center">
         {" "}
         <h1 class="text-sm text-accent">Token Address </h1>
-        <p 
-          onClick$={async()=> {
-            copyEvent.value = "copytext copied"
+        <p
+          onClick$={async () => {
+            copyEvent.value = "copytext copied";
             await writeText(store.tokenAddress);
-            setTimeout(()=> {copyEvent.value = "copytext"},500)
-        
+            setTimeout(() => {
+              copyEvent.value = "copytext";
+            }, 500);
           }}
-          class={copyEvent.value + " " + "break-all"}>{store.tokenAddress}</p>
+          class={copyEvent.value + " " + "break-all"}
+        >
+          {store.tokenAddress}
+        </p>
         {/* <h1 class="text-sm text-accent">Total BCH Token Value </h1> */}
         {/* {store.tokenUtxoSatoshiBalance} */}
         <br />
@@ -268,7 +273,7 @@ export const SendTokenModal = component$((props: Utxo) => {
 
   const store = useStore({
     derivationPath: walletData.bip44Path,
-    srcAddress: walletData.activeAddr,
+    srcAddress: walletData.address,
     availableTokenSatoshiAmount: props.value,
     destinationAddress: "",
     tokenSendAmount: undefined as string | undefined,
@@ -293,7 +298,7 @@ export const SendTokenModal = component$((props: Utxo) => {
   useVisibleTask$(({ track }) => {
     store.availableTokenAmount = props.token_data!.amount;
     store.category = props.token_data!.category;
-    store.srcAddress = walletData.activeAddr;
+    store.srcAddress = walletData.address;
     store.derivationPath = walletData.bip44Path;
     store.commitment =
       props.token_data!.nft == undefined
@@ -425,28 +430,28 @@ export const SendTokenModal = component$((props: Utxo) => {
           </h2>
           {props.token_data?.nft != undefined ? (
             <>
-            <div>
-              <label>To Fungible</label>
-              <input
-                onClick$={() => {
-                  store.capability = undefined;
-                  store.commitment = undefined;
-                  build();
-                }}
-                type="checkbox"
-              ></input>
-            </div>
-            <div>
-              <label>Minting</label>
-              <input
-                onClick$={() => {
-                  store.capability = "minting";
-                  // store.commitment = undefined;
-                  build();
-                }}
-                type="checkbox"
-              ></input>
-            </div>
+              <div>
+                <label>To Fungible</label>
+                <input
+                  onClick$={() => {
+                    store.capability = undefined;
+                    store.commitment = undefined;
+                    build();
+                  }}
+                  type="checkbox"
+                ></input>
+              </div>
+              <div>
+                <label>Minting</label>
+                <input
+                  onClick$={() => {
+                    store.capability = "minting";
+                    // store.commitment = undefined;
+                    build();
+                  }}
+                  type="checkbox"
+                ></input>
+              </div>
             </>
           ) : (
             <></>
@@ -469,21 +474,20 @@ export const SendTokenModal = component$((props: Utxo) => {
                 });
               if (store.capability == "minting") {
                 store.availableTokenAmount >=
-                parseInt(store.tokenSendAmount, 10)
+                  parseInt(store.tokenSendAmount, 10);
                 build();
                 return;
               } else {
-              store.tokenAmountValid =
-                store.availableTokenAmount >=
-                parseInt(store.tokenSendAmount, 10)
-                  ? true
-                  : false;
-              store.tokenSendAmount = store.tokenAmountValid
-                ? store.tokenSendAmount
-                : undefined;
+                store.tokenAmountValid =
+                  store.availableTokenAmount >=
+                  parseInt(store.tokenSendAmount, 10)
+                    ? true
+                    : false;
+                store.tokenSendAmount = store.tokenAmountValid
+                  ? store.tokenSendAmount
+                  : undefined;
 
-              build();
-
+                build();
               }
             }}
             value={store.tokenSendAmount}
@@ -558,7 +562,8 @@ export const SendTokenModal = component$((props: Utxo) => {
                     onClick$={() => {
                       store.satoshiSendAmount =
                         store.availableTokenSatoshiAmount;
-                      store.tokenSendAmount = store.availableTokenAmount.toString()
+                      store.tokenSendAmount =
+                        store.availableTokenAmount.toString();
 
                       build();
                     }}

@@ -227,14 +227,12 @@ export const ImportMnemonic = component$(() => {
                 // invoke("close_wallet_create").then(() => {
                 //   console.log("CLOSE WALLET CREEATE");
                 // });
-              })
-              .finally(async () => {
-                const walletCreateWindow =
-                  WebviewWindow.getByLabel("create-wallet");
-                // nav("/");
-                // create-wallet
-                await walletCreateWindow?.close();
               });
+            // .finally(async () => {
+            //   const walletCreateWindow =
+            //     WebviewWindow.getByLabel("create-wallet");
+            //   await walletCreateWindow?.close();
+            // });
           }}
         >
           Import Wallet from Mnemonic

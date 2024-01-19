@@ -21,7 +21,7 @@ export default component$(() => {
   useVisibleTask$(({ track }) => {
     const ctxUpdated = track(() => contextSet.rdy);
     if (ctxUpdated) {
-      const address = walletData.activeAddr;
+      const address = walletData.address;
       const networkUrl = walletData.networkUrl?.concat(":50001");
       invoke("network_unspent_balance_include_tokens", {
         address,

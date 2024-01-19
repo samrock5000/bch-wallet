@@ -36,6 +36,7 @@ import {
   type Utxo,
   type WalletData,
   type NetworkUrlUpdate,
+  walletCache,
 } from "~/components/utils/utils";
 
 export const onGet: RequestHandler = async ({ cacheControl }) => {
@@ -67,7 +68,8 @@ export const utxoSum = (utxo: Utxo[]) =>
   utxo.reduce((sum, outputs) => sum + outputs.value, 0);
 
 export default component$(() => {
-  const mnemonicExist = useSignal(false as undefined | boolean);
+  const walletExist = useSignal(false as undefined | boolean);
+  const networkConnection = useSignal(false);
   const contextUpdated = useSignal(false);
   const contextSet = useStore<ContextRdy>({
     rdy: false,
@@ -80,16 +82,17 @@ export default component$(() => {
   });
   const store = useStore<WalletData>({
     masterKey: "",
-    activeAddr: "",
+    address: "",
     balance: 0,
-    tokenUtxoBalance: 0,
+    tokenSatoshiBalance: 0,
     mnemonic: "",
     networkUrl: "chipnet.imaginary.cash",
     network: "test",
-    networkConnection: false,
+    // networkConnection: false,
     bip44Path: derivationPath,
     utxos: [],
     tokenUtxos: [],
+    walletExist: false,
   });
 
   // const loadMemUtxoStore = $();
@@ -104,7 +107,7 @@ export default component$(() => {
       })
       .catch((e) => console.error("update utxo store", e))
       .finally(() => {
-        getUtxos(store.activeAddr)
+        getUtxos(store.address)
           .then((utxos) => {
             // @ts-ignore
             store.utxos = utxos.filter((e) => !e.token_data);
@@ -127,6 +130,163 @@ export default component$(() => {
     webSocketID: 0,
   });
   useVisibleTask$(async ({ track }) => {
+    // if (!walletExist.value) {
+    //   const unlisten = await listen<WalletInit>(
+    //     "mnemonicLoaded",
+    //     async (event) => {
+    //       walletExist.value = true;
+    //       contextUpdated.value = true;
+    //       console.log(
+    //         `new wallet created ${event.windowLabel}, payload: ${event.payload.mnemonic}`,
+    //       );
+    //     },
+    //   );
+    // }
+    walletCache()
+      .then(async (cache) => {
+        store.walletExist = cache.walletExist;
+        if (!store.walletExist) {
+          return;
+        } else {
+          store.address = cache.address;
+          store.balance = cache.balance;
+          store.bip44Path = cache.bip44Path;
+          store.mnemonic = cache.mnemonic;
+          store.network = cache.network;
+          store.networkUrl = cache.networkUrl;
+          store.tokenSatoshiBalance = cache.tokenSatoshiBalance;
+          store.tokenUtxos = cache.tokenUtxos;
+          store.utxos = cache.utxos;
+
+          contextSet.rdy = true;
+          console.log(store);
+        }
+      })
+      .catch((e) => console.error("walletCache", e))
+      .then(() => {
+        networkPing(store.networkUrl!.concat(":50001"))
+          .then(() => {
+            networkConnection.value = true;
+          })
+          .catch((e) => {
+            networkConnection.value = false;
+            console.error("networkPing", e);
+          });
+      });
+    track(() => walletExist.value);
+    track(() => contextSet.rdy);
+  });
+
+  useContextProvider(WalletContext, store);
+  useContextProvider(ContextSuccess, contextSet);
+  useContextProvider(UrlContext, urlCtxStore);
+
+  return (
+    <>
+      <div>
+        <label class="text-xs"> Network: </label>
+        <span class="text-xs text-secondary">
+          {" "}
+          {networkConnection.value
+            ? `${store.networkUrl} ✓`
+            : "no connection ✗"}
+          {""}
+        </span>
+        {!walletExist.value ? (
+          <>
+            <Slot />
+          </>
+        ) : (
+          <>
+            <Header />
+            <Slot />
+            <ManualUtxoCheck />
+          </>
+        )}
+      </div>
+    </>
+  );
+});
+
+const ManualUtxoCheck = component$(() => {
+  const walletData = useContext(WalletContext);
+  const store = useStore({
+    utxos: [] as Utxo[],
+  });
+  const updateUtxoStore = $((address: string, networkUrl: string) => {
+    invoke("update_utxo_store", { address, networkUrl })
+      .then(() => {
+        console.log("store updated");
+      })
+      .catch((e) => console.error(e));
+  });
+  const getUtxos = $((address: string, networkUrl: string) => {
+    invoke("network_unspent_utxos", { address, networkUrl })
+      .then((utxos) => {
+        // @ts-ignore
+        const x = JSON.parse(utxos);
+        // @ts-ignore
+        store.utxos = x.filter((e) => !e.token_data);
+        console.log("utxos", store.utxos);
+      })
+      .catch((e) => console.error(e));
+  });
+
+  const address = walletData.activeAddr;
+  return (
+    <>
+      {/* <h1>CONSOLE DEBUG</h1>
+      <button
+        class="btn btn-outline btn-accent btn-xs  opacity-60"
+        onClick$={() =>
+          invoke("get_mempool_address", { address, networkUrl }).then((data) =>
+            // @ts-ignore
+            console.log(JSON.parse(data)),
+          )
+        }
+      >
+        MEMPOOL CHECK
+      </button>
+      <br></br>
+      <button
+        class="btn btn-outline btn-accent btn-xs  opacity-60"
+        onClick$={() => updateUtxoStore(address, networkUrl)}
+      >
+        UPDATE LOCAL STORE
+      </button>
+
+      <br></br>
+      <button
+        class="btn btn-outline btn-accent btn-xs  opacity-60"
+        onClick$={() => getUtxos(address, networkUrl)}
+      >
+        FETCH DB UTXOS
+      </button> */}
+
+      <br></br>
+      <button
+        class="btn btn-outline btn-accent btn-xs  opacity-60"
+        onClick$={() => {
+          invoke("utxo_cache", { address })
+            .then((d) => {
+              console.log("UTXOS CASHE", d);
+            })
+            .catch((e) => console.error(e));
+          invoke("address_cache", { address })
+            .then((d) => {
+              console.log("ADDRESS CACHE", d);
+            })
+            .catch((e) => console.error(e));
+        }}
+      >
+        CHECK COMMAND
+      </button>
+    </>
+  );
+});
+
+/* 
+old init client work
     doesWalletExist().then(async (res) => {
       mnemonicExist.value = res as boolean;
     });
@@ -145,7 +305,7 @@ export default component$(() => {
 
     urlCtxStore.url = networkUrlUpdated!;
 
-    /* const unlistenNetworkUrlUpdate = */ await listen<NetworkUrlUpdate>(
+     await listen<NetworkUrlUpdate>(
       "networkUrlupdate",
       async (event) => {
         store.networkUrl = event.payload.url;
@@ -178,7 +338,7 @@ export default component$(() => {
       });
 
     if (!walletExist) {
-      /* const unlisten =  */ await listen<WalletInit>(
+      // const unlisten =  await listen<WalletInit>(
         "mnemonicLoaded",
         async (event) => {
           mnemonicExist.value = true;
@@ -262,115 +422,14 @@ export default component$(() => {
       //   .catch((e) => console.error(e))
       // .finally(() => {
 
-      /* 
+       
         updateUtxoStore(store.activeAddr, store.networkUrl!.concat(":50001")!)
         .catch((e) => console.error("updateUtxoStore err", e))
         .finally(() => {
           setListener();
         });
-      */
+      
 
       // });
     }
-  });
-
-  useContextProvider(WalletContext, store);
-  useContextProvider(ContextSuccess, contextSet);
-  useContextProvider(UrlContext, urlCtxStore);
-
-  return (
-    <>
-      <div>
-        <label class="text-xs"> Network: </label>
-        <span class="text-xs text-secondary">
-          {" "}
-          {store.networkConnection
-            ? `${store.networkUrl} ✓`
-            : "no connection ✗"}
-          {""}
-        </span>
-
-        <Header />
-        <Slot />
-        <ManualUtxoCheck />
-      </div>
-    </>
-  );
-});
-
-const ManualUtxoCheck = component$(() => {
-  const walletData = useContext(WalletContext);
-  const store = useStore({
-    utxos: [] as Utxo[],
-  });
-  const updateUtxoStore = $((address: string, networkUrl: string) => {
-    invoke("update_utxo_store", { address, networkUrl })
-      .then(() => {
-        console.log("store updated");
-      })
-      .catch((e) => console.error(e));
-  });
-  const getUtxos = $((address: string, networkUrl: string) => {
-    invoke("network_unspent_utxos", { address, networkUrl })
-      .then((utxos) => {
-        // @ts-ignore
-        const x = JSON.parse(utxos);
-        // @ts-ignore
-        store.utxos = x.filter((e) => !e.token_data);
-        console.log("utxos", store.utxos);
-      })
-      .catch((e) => console.error(e));
-  });
-
-  const address = walletData.activeAddr;
-  return (
-    <>
-      {/* <h1>CONSOLE DEBUG</h1>
-      <button
-        class="btn btn-outline btn-accent btn-xs  opacity-60"
-        onClick$={() =>
-          invoke("get_mempool_address", { address, networkUrl }).then((data) =>
-            // @ts-ignore
-            console.log(JSON.parse(data)),
-          )
-        }
-      >
-        MEMPOOL CHECK
-      </button>
-      <br></br>
-      <button
-        class="btn btn-outline btn-accent btn-xs  opacity-60"
-        onClick$={() => updateUtxoStore(address, networkUrl)}
-      >
-        UPDATE LOCAL STORE
-      </button>
-
-      <br></br>
-      <button
-        class="btn btn-outline btn-accent btn-xs  opacity-60"
-        onClick$={() => getUtxos(address, networkUrl)}
-      >
-        FETCH DB UTXOS
-      </button> */}
-
-      <br></br>
-      <button
-        class="btn btn-outline btn-accent btn-xs  opacity-60"
-        onClick$={() => {
-          invoke("utxo_cache", { address })
-            .then((d) => {
-              console.log("UTXOS CASHE", d);
-            })
-            .catch((e) => console.error(e));
-          invoke("address_cache", { address })
-            .then((d) => {
-              console.log("ADDRESS CACHE", d);
-            })
-            .catch((e) => console.error(e));
-        }}
-      >
-        CHECK COMMAND
-      </button>
-    </>
-  );
-});
+    */
